@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode } from 'react'
+import React, { createContext, useContext, ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { AuthCredentials } from '@/lib/types'
 
