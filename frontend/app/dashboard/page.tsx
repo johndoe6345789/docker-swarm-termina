@@ -198,7 +198,7 @@ export default function Dashboard() {
         ) : (
           <Grid container spacing={3}>
             {containers.map((container) => (
-              <Grid item xs={12} sm={6} lg={4} key={container.id}>
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={container.id}>
                 <ContainerCard
                   container={container}
                   onOpenShell={() => handleOpenShell(container)}
