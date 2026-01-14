@@ -6,8 +6,8 @@ Successfully migrated the Docker Swarm Container Terminal WebUI from a Vite + Re
 ## Changes Made
 
 ### 1. Project Organization
-- ✅ Moved entire original project to `/old/` directory
-- ✅ Created new project structure with separate `backend/` and `frontend/` directories
+- ✅ Restructured project with separate `backend/` and `frontend/` directories
+- ✅ Removed legacy Vite-based frontend from project root
 
 ### 2. Backend (Flask + Python)
 Created a new Flask backend with the following features:
@@ -90,13 +90,13 @@ Updated all documentation:
 
 ## Technology Stack Comparison
 
-### Old Stack (in `/old/`)
+### Previous Stack
 - **Frontend:** Vite + React + TypeScript
 - **UI Library:** Radix UI + Tailwind CSS
 - **Data:** Mock data (no backend)
 - **Deployment:** Static site
 
-### New Stack
+### Current Stack
 - **Backend:** Flask (Python) + Docker SDK
 - **Frontend:** Next.js 14+ (React) + TypeScript
 - **UI Library:** Material UI + Tailwind CSS
@@ -139,7 +139,3 @@ docker-compose up -d
 6. Implement container stats/metrics dashboard
 7. Add Docker Swarm-specific features
 8. Set up production-grade security measures
-
-## Files Preserved
-
-All original files are preserved in the `/old/` directory for reference and potential rollback.

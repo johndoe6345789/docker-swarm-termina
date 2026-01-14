@@ -161,7 +161,6 @@ Images are automatically built and pushed to GitHub Container Registry on every 
 │   ├── components/         # React components
 │   ├── lib/                # Utility functions and API client
 │   └── Dockerfile          # Frontend Docker image
-├── old/                    # Previous version (React + Vite)
 ├── docker-compose.yml      # Docker Compose configuration
 └── .github/
     └── workflows/
@@ -184,10 +183,6 @@ docker tag docker-swarm-termina-frontend ghcr.io/johndoe6345789/docker-swarm-ter
 docker push ghcr.io/johndoe6345789/docker-swarm-termina-backend:latest
 docker push ghcr.io/johndoe6345789/docker-swarm-termina-frontend:latest
 ```
-
-## Old Version
-
-The previous version (React + Vite + Radix UI) is preserved in the `old/` directory for reference.
 
 ## License
 
