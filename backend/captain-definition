@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 2,
+  "dockerfilePath": "./Dockerfile",
+  "serviceUpdateOverride": {
+    "TaskTemplate": {
+      "ContainerSpec": {
+        "Mounts": [
+          {
+            "Type": "bind",
+            "Source": "/var/run/docker.sock",
+            "Target": "/var/run/docker.sock"
+          }
+        ]
+      }
+    }
+  }
+}
