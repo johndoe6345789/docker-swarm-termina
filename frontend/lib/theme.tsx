@@ -28,28 +28,42 @@ const theme = createTheme({
       main: '#38b2ac',
     },
   },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
   typography: {
     fontFamily: '"JetBrains Mono", "Courier New", monospace',
     h1: {
       fontWeight: 700,
-      fontSize: '2rem',
+      fontSize: 'clamp(1.5rem, 4vw, 2rem)',
       letterSpacing: '-0.02em',
     },
     h2: {
       fontWeight: 600,
-      fontSize: '1.5rem',
+      fontSize: 'clamp(1.125rem, 3vw, 1.5rem)',
     },
     h3: {
       fontWeight: 500,
-      fontSize: '1.125rem',
+      fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
     },
     body1: {
-      fontSize: '0.875rem',
+      fontSize: 'clamp(0.8rem, 1.5vw, 0.875rem)',
       lineHeight: 1.6,
+    },
+    body2: {
+      fontSize: 'clamp(0.75rem, 1.3vw, 0.8125rem)',
+      lineHeight: 1.5,
     },
     button: {
       fontWeight: 500,
       textTransform: 'none',
+      fontSize: 'clamp(0.8rem, 1.5vw, 0.875rem)',
     },
   },
   components: {
