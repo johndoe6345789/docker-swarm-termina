@@ -16,14 +16,15 @@ import {
   useTheme,
 } from '@mui/material';
 import { Logout, Refresh, Inventory2 } from '@mui/icons-material';
-import { useAppDispatch, useAppSelector } from '@/lib/store/hooks';
+import { useAppDispatch } from '@/lib/store/hooks';
 import { logout as logoutAction } from '@/lib/store/authSlice';
+import { useAuthRedirect } from '@/lib/hooks/useAuthRedirect';
 import { apiClient, Container as ContainerType } from '@/lib/api';
 import ContainerCard from '@/components/ContainerCard';
 import TerminalModal from '@/components/TerminalModal';
 
 export default function Dashboard() {
-  const { isAuthenticated, loading: authLoading } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, loading: authLoading } = useAuthRedirect('/');
   const dispatch = useAppDispatch();
   const router = useRouter();
   const theme = useTheme();
@@ -34,12 +35,6 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/');
-    }
-  }, [isAuthenticated, authLoading, router]);
 
   const fetchContainers = async () => {
     setIsRefreshing(true);
