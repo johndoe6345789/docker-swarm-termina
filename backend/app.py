@@ -21,6 +21,8 @@ CORS(app)
 
 # Simple in-memory session storage (in production, use proper session management)
 sessions = {}
+# Track working directory per session
+session_workdirs = {}
 
 # Default credentials (should be environment variables in production)
 ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
@@ -231,27 +233,111 @@ def exec_container(container_id):
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
         return jsonify({'error': 'Unauthorized'}), 401
-    
+
     token = auth_header.split(' ')[1]
     if token not in sessions:
         return jsonify({'error': 'Invalid session'}), 401
-    
+
     data = request.get_json()
-    command = data.get('command', '/bin/sh')
-    
+    user_command = data.get('command', 'echo "No command provided"')
+
     client = get_docker_client()
     if not client:
         return jsonify({'error': 'Cannot connect to Docker'}), 500
-    
+
     try:
         container = client.containers.get(container_id)
-        exec_instance = container.exec_run(command, stdout=True, stderr=True, stdin=True, tty=True)
-        
+
+        # Get or initialize session working directory
+        session_key = f"{token}_{container_id}"
+        if session_key not in session_workdirs:
+            # Get container's default working directory or use root
+            session_workdirs[session_key] = '/'
+
+        current_workdir = session_workdirs[session_key]
+
+        # Check if this is a cd command
+        cd_match = user_command.strip()
+        is_cd_command = cd_match.startswith('cd ')
+
+        # If it's a cd command, handle it specially
+        if is_cd_command:
+            target_dir = cd_match[3:].strip() or '~'
+            # Resolve the new directory and update session
+            resolve_command = f'cd "{current_workdir}" && cd {target_dir} && pwd'
+            bash_command = [
+                '/bin/bash',
+                '-c',
+                f'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; {resolve_command}'
+            ]
+        else:
+            # Regular command - execute in current working directory
+            bash_command = [
+                '/bin/bash',
+                '-c',
+                f'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; cd "{current_workdir}" && {user_command}; echo "::WORKDIR::$(pwd)"'
+            ]
+
+        # Try bash first, fallback to sh if bash doesn't exist
+        try:
+            exec_instance = container.exec_run(
+                bash_command,
+                stdout=True,
+                stderr=True,
+                stdin=False,
+                tty=True,
+                environment={'TERM': 'xterm-256color', 'LANG': 'C.UTF-8'}
+            )
+        except Exception as bash_error:
+            logger.warning(f"Bash execution failed, trying sh: {bash_error}")
+            # Fallback to sh
+            if is_cd_command:
+                target_dir = cd_match[3:].strip() or '~'
+                resolve_command = f'cd "{current_workdir}" && cd {target_dir} && pwd'
+                sh_command = ['/bin/sh', '-c', f'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; {resolve_command}']
+            else:
+                sh_command = ['/bin/sh', '-c', f'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; cd "{current_workdir}" && {user_command}; echo "::WORKDIR::$(pwd)"']
+
+            exec_instance = container.exec_run(
+                sh_command,
+                stdout=True,
+                stderr=True,
+                stdin=False,
+                tty=True,
+                environment={'TERM': 'xterm-256color', 'LANG': 'C.UTF-8'}
+            )
+
+        # Decode output with error handling
+        output = ''
+        if exec_instance.output:
+            try:
+                output = exec_instance.output.decode('utf-8')
+            except UnicodeDecodeError:
+                # Try latin-1 as fallback
+                output = exec_instance.output.decode('latin-1', errors='replace')
+
+        # Extract and update working directory from output
+        new_workdir = current_workdir
+        if is_cd_command:
+            # For cd commands, the output is the new pwd
+            new_workdir = output.strip()
+            session_workdirs[session_key] = new_workdir
+            output = ''  # Don't show the pwd output for cd
+        else:
+            # Extract workdir marker from output
+            if '::WORKDIR::' in output:
+                parts = output.rsplit('::WORKDIR::', 1)
+                output = parts[0]
+                new_workdir = parts[1].strip()
+                session_workdirs[session_key] = new_workdir
+
         return jsonify({
-            'output': exec_instance.output.decode('utf-8') if exec_instance.output else '',
-            'exit_code': exec_instance.exit_code
+            'output': output,
+            'exit_code': exec_instance.exit_code,
+            'workdir': new_workdir
         })
     except Exception as e:
+        logger.error(f"Error executing command: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])

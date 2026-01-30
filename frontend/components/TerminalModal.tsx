@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -23,6 +23,12 @@ interface TerminalModalProps {
   containerId: string;
 }
 
+interface OutputLine {
+  type: 'command' | 'output' | 'error';
+  content: string;
+  workdir?: string;
+}
+
 export default function TerminalModal({
   open,
   onClose,
@@ -30,20 +36,50 @@ export default function TerminalModal({
   containerId,
 }: TerminalModalProps) {
   const [command, setCommand] = useState('');
-  const [output, setOutput] = useState<string[]>([]);
+  const [output, setOutput] = useState<OutputLine[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [workdir, setWorkdir] = useState('/');
+  const outputRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when output changes
+  useEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output]);
 
   const handleExecute = async () => {
     if (!command.trim()) return;
 
     setIsExecuting(true);
-    setOutput((prev) => [...prev, `$ ${command}`]);
+
+    // Add command to output with current working directory
+    setOutput((prev) => [...prev, {
+      type: 'command',
+      content: command,
+      workdir: workdir
+    }]);
 
     try {
       const result = await apiClient.executeCommand(containerId, command);
-      setOutput((prev) => [...prev, result.output || '(no output)']);
+
+      // Update working directory if provided
+      if (result.workdir) {
+        setWorkdir(result.workdir);
+      }
+
+      // Add command output
+      if (result.output && result.output.trim()) {
+        setOutput((prev) => [...prev, {
+          type: result.exit_code === 0 ? 'output' : 'error',
+          content: result.output
+        }]);
+      }
     } catch (error) {
-      setOutput((prev) => [...prev, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`]);
+      setOutput((prev) => [...prev, {
+        type: 'error',
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }]);
     } finally {
       setIsExecuting(false);
       setCommand('');
@@ -60,7 +96,48 @@ export default function TerminalModal({
   const handleClose = () => {
     setOutput([]);
     setCommand('');
+    setWorkdir('/');
     onClose();
+  };
+
+  const formatPrompt = (workdir: string) => {
+    // Shorten workdir if it's too long (show ~ for home, or just basename)
+    let displayDir = workdir;
+    if (workdir.length > 30) {
+      const parts = workdir.split('/');
+      displayDir = '.../' + parts[parts.length - 1];
+    }
+    return `root@${containerName}:${displayDir}#`;
+  };
+
+  const highlightCommand = (line: OutputLine) => {
+    if (line.type === 'command') {
+      const prompt = formatPrompt(line.workdir || '/');
+      const parts = line.content.split(' ');
+      const cmd = parts[0];
+      const args = parts.slice(1).join(' ');
+
+      return (
+        <div style={{ marginBottom: '4px' }}>
+          <span style={{ color: '#8BE9FD', fontWeight: 'bold' }}>{prompt}</span>
+          {' '}
+          <span style={{ color: '#50FA7B', fontWeight: 'bold' }}>{cmd}</span>
+          {args && <span style={{ color: '#F8F8F2' }}> {args}</span>}
+        </div>
+      );
+    } else if (line.type === 'error') {
+      return (
+        <div style={{ color: '#FF5555', marginBottom: '2px' }}>
+          {line.content}
+        </div>
+      );
+    } else {
+      return (
+        <div style={{ color: '#F8F8F2', marginBottom: '2px', whiteSpace: 'pre-wrap' }}>
+          {line.content}
+        </div>
+      );
+    }
   };
 
   return (
@@ -94,65 +171,123 @@ export default function TerminalModal({
 
       <DialogContent dividers>
         <Paper
+          ref={outputRef}
           elevation={0}
           sx={{
-            backgroundColor: '#0d1117',
-            color: '#c9d1d9',
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: '0.875rem',
+            backgroundColor: '#300A24',
+            color: '#F8F8F2',
+            fontFamily: '"Ubuntu Mono", "Courier New", monospace',
+            fontSize: '14px',
             padding: 2,
-            minHeight: '300px',
-            maxHeight: '400px',
+            minHeight: '400px',
+            maxHeight: '500px',
             overflowY: 'auto',
             mb: 2,
+            border: '1px solid #5E2750',
+            borderRadius: '4px',
             '&::-webkit-scrollbar': {
-              width: '8px',
+              width: '10px',
             },
             '&::-webkit-scrollbar-track': {
-              background: '#161b22',
+              background: '#2C0922',
             },
             '&::-webkit-scrollbar-thumb': {
-              background: '#30363d',
-              borderRadius: '4px',
+              background: '#5E2750',
+              borderRadius: '5px',
+              '&:hover': {
+                background: '#772953',
+              }
             },
           }}
         >
           {output.length === 0 ? (
-            <Typography color="text.secondary" sx={{ fontFamily: 'inherit' }}>
-              Connected to {containerName}. Enter a command to start...
-            </Typography>
+            <Box>
+              <Typography sx={{
+                color: '#8BE9FD',
+                fontFamily: 'inherit',
+                fontSize: '13px',
+                mb: 1
+              }}>
+                Ubuntu-style Terminal - Connected to <span style={{ color: '#50FA7B', fontWeight: 'bold' }}>{containerName}</span>
+              </Typography>
+              <Typography sx={{
+                color: '#6272A4',
+                fontFamily: 'inherit',
+                fontSize: '12px'
+              }}>
+                Type a command and press Enter or click Execute...
+              </Typography>
+            </Box>
           ) : (
-            <Box component="pre" sx={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {output.join('\n')}
+            <Box>
+              {output.map((line, index) => (
+                <React.Fragment key={index}>
+                  {highlightCommand(line)}
+                </React.Fragment>
+              ))}
             </Box>
           )}
         </Paper>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Typography sx={{
+            fontFamily: '"Ubuntu Mono", monospace',
+            fontSize: '14px',
+            color: '#8BE9FD',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap'
+          }}>
+            {formatPrompt(workdir)}
+          </Typography>
           <TextField
             fullWidth
             value={command}
             onChange={(e) => setCommand(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Enter command (e.g., ls, pwd, echo 'hello')"
+            placeholder="ls -la"
             disabled={isExecuting}
             variant="outlined"
             size="small"
+            autoFocus
             sx={{
-              fontFamily: '"JetBrains Mono", monospace',
+              fontFamily: '"Ubuntu Mono", monospace',
               '& input': {
-                fontFamily: '"JetBrains Mono", monospace',
+                fontFamily: '"Ubuntu Mono", monospace',
+                fontSize: '14px',
+                padding: '8px 12px',
+              },
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#1E1E1E',
+                '& fieldset': {
+                  borderColor: '#5E2750',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#772953',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#8BE9FD',
+                },
+              },
+              '& input': {
+                color: '#F8F8F2',
               },
             }}
           />
           <Button
             variant="contained"
-            color="secondary"
             onClick={handleExecute}
             disabled={isExecuting || !command.trim()}
             startIcon={<Send />}
+            sx={{
+              backgroundColor: '#5E2750',
+              '&:hover': {
+                backgroundColor: '#772953',
+              },
+              textTransform: 'none',
+              fontWeight: 'bold',
+            }}
           >
-            Execute
+            Run
           </Button>
         </Box>
       </DialogContent>
