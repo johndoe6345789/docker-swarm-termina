@@ -27,11 +27,28 @@ A modern, secure web interface for managing Docker containers with interactive t
 ### Deployment
 - **Docker** - Containerized deployment
 - **Docker Compose** - Multi-container orchestration
+- **CapRover** - Docker Swarm deployment platform
 - **GHCR** - GitHub Container Registry for images
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Using CapRover (Recommended for Production)
+
+Pre-built deployment packages are available in [Releases](https://github.com/johndoe6345789/docker-swarm-termina/releases):
+
+1. Download the latest release packages:
+   - `backend-caprover-{version}.tar` (uncompressed - required by CapRover)
+   - `frontend-caprover-{version}.tar` (uncompressed - required by CapRover)
+
+2. Deploy to CapRover:
+   - Upload backend `.tar` file to your CapRover backend app
+   - Upload frontend `.tar` file to your CapRover frontend app
+
+For detailed instructions, see:
+- **[QUICKSTART.md](QUICKSTART.md)** - Fast deployment guide
+- **[CAPROVER_DEPLOYMENT.md](CAPROVER_DEPLOYMENT.md)** - Complete CapRover setup guide
+
+### Using Docker Compose (Local Development)
 
 1. Clone the repository:
 ```bash
@@ -129,9 +146,19 @@ The frontend will be available at http://localhost:3000
 ### Health
 - `GET /api/health` - Health check endpoint
 
-## Docker Images
+## Deployment Options
 
-Images are automatically built and pushed to GitHub Container Registry on every push to main:
+### CapRover (Docker Swarm)
+
+**Production-ready deployment packages** are automatically built and published to [GitHub Releases](https://github.com/johndoe6345789/docker-swarm-termina/releases).
+
+- **Quick Deploy**: Upload pre-built tar files to CapRover
+- **Documentation**: See [CAPROVER_DEPLOYMENT.md](CAPROVER_DEPLOYMENT.md)
+- **Includes**: Enhanced Docker socket debugging and diagnostics
+
+### Docker Images (GHCR)
+
+Images are automatically built and pushed to GitHub Container Registry:
 
 - Backend: `ghcr.io/johndoe6345789/docker-swarm-termina-backend`
 - Frontend: `ghcr.io/johndoe6345789/docker-swarm-termina-frontend`

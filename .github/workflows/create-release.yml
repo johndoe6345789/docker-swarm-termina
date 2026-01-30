@@ -1,0 +1,194 @@
+name: Create CapRover Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(git describe --tags --always)
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Building release version: ${VERSION}"
+
+      - name: Create releases directory
+        run: mkdir -p releases
+
+      - name: Create backend package
+        run: |
+          cd backend
+          tar -cf "../releases/backend-caprover-${{ steps.version.outputs.VERSION }}.tar" \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.env' \
+            --exclude='venv' \
+            --exclude='.git' \
+            .
+          cd ..
+
+      - name: Create frontend package
+        run: |
+          cd frontend
+          tar -cf "../releases/frontend-caprover-${{ steps.version.outputs.VERSION }}.tar" \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='.env' \
+            --exclude='.env.local' \
+            --exclude='.git' \
+            .
+          cd ..
+
+      - name: Create documentation package
+        run: |
+          tar -czf "releases/documentation-${{ steps.version.outputs.VERSION }}.tar.gz" \
+            CAPROVER_DEPLOYMENT.md \
+            QUICKSTART.md \
+            README.md \
+            backend/README.md \
+            frontend/README.md \
+            releases/README.md || true
+
+      - name: Generate checksums
+        run: |
+          cd releases
+          sha256sum backend-caprover-${{ steps.version.outputs.VERSION }}.tar frontend-caprover-${{ steps.version.outputs.VERSION }}.tar documentation-${{ steps.version.outputs.VERSION }}.tar.gz > checksums-${{ steps.version.outputs.VERSION }}.txt
+          cat checksums-${{ steps.version.outputs.VERSION }}.txt
+          cd ..
+
+      - name: Create deployment instructions
+        run: |
+          cat > releases/DEPLOYMENT-${{ steps.version.outputs.VERSION }}.txt << 'EOF'
+          Docker Swarm Terminal - CapRover Deployment
+          Version: ${{ steps.version.outputs.VERSION }}
+
+          Quick Deployment:
+
+          1. Backend:
+             - Create app in CapRover: terminalbackend
+             - Enable HTTPS
+             - Upload: backend-caprover-${{ steps.version.outputs.VERSION }}.tar
+             - Verify logs show: "✓ Docker connection verified on startup"
+
+          2. Frontend:
+             - Create app in CapRover: terminalfrontend
+             - Enable HTTPS
+             - Set env: NEXT_PUBLIC_API_URL=https://terminalbackend.yourdomain.com
+             - Upload: frontend-caprover-${{ steps.version.outputs.VERSION }}.tar
+
+          3. Test:
+             curl https://terminalbackend.yourdomain.com/api/health
+
+          For detailed instructions, extract and read documentation-${{ steps.version.outputs.VERSION }}.tar.gz
+
+          Checksums (SHA256):
+          $(cat releases/checksums-${{ steps.version.outputs.VERSION }}.txt)
+          EOF
+
+      - name: List release files
+        run: |
+          echo "=== Release Files ==="
+          ls -lh releases/
+          echo ""
+          echo "=== Checksums ==="
+          cat releases/checksums-${{ steps.version.outputs.VERSION }}.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Docker Swarm Terminal - CapRover Release ${{ steps.version.outputs.VERSION }}
+
+            ### 📦 Deployment Packages
+
+            Pre-built packages ready for CapRover deployment:
+            - `backend-caprover-${{ steps.version.outputs.VERSION }}.tar` - Backend Flask application (uncompressed tar for CapRover)
+            - `frontend-caprover-${{ steps.version.outputs.VERSION }}.tar` - Frontend Next.js application (uncompressed tar for CapRover)
+            - `documentation-${{ steps.version.outputs.VERSION }}.tar.gz` - Complete documentation
+
+            **Note**: CapRover requires uncompressed `.tar` files. The backend and frontend packages are uncompressed for direct upload to CapRover.
+
+            ### 🚀 Quick Deploy
+
+            1. **Backend**: Upload `backend-caprover-*.tar` to your CapRover backend app
+            2. **Frontend**: Upload `frontend-caprover-*.tar` to your CapRover frontend app
+            3. **Verify**: Check logs for "✓ Docker connection verified on startup"
+
+            ### 📝 Documentation
+
+            - See `QUICKSTART.md` for step-by-step deployment
+            - Read `CAPROVER_DEPLOYMENT.md` for detailed configuration
+            - Check `checksums-*.txt` for package verification
+
+            ### 🔐 Security
+
+            **Important**: Change default credentials after deployment!
+            - Default username: `admin`
+            - Default password: `admin123`
+
+            Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables in CapRover.
+
+            ### ✅ Verification
+
+            ```bash
+            # Verify checksums
+            sha256sum -c checksums-${{ steps.version.outputs.VERSION }}.txt
+
+            # Test backend
+            curl https://your-backend.domain.com/api/health
+            ```
+
+            ### 🐛 Troubleshooting
+
+            If you see "Cannot connect to Docker" error:
+            1. Check backend logs for diagnostic output
+            2. Ensure `captain-definition` is properly configured
+            3. Verify container runs as root with Docker socket mounted
+
+            See `CAPROVER_DEPLOYMENT.md` for detailed troubleshooting.
+          files: |
+            releases/backend-caprover-${{ steps.version.outputs.VERSION }}.tar
+            releases/frontend-caprover-${{ steps.version.outputs.VERSION }}.tar
+            releases/documentation-${{ steps.version.outputs.VERSION }}.tar.gz
+            releases/checksums-${{ steps.version.outputs.VERSION }}.txt
+            releases/DEPLOYMENT-${{ steps.version.outputs.VERSION }}.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: caprover-release-${{ steps.version.outputs.VERSION }}
+          path: releases/
+          retention-days: 90
