@@ -1,9 +1,12 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, disconnect
 import docker
 import os
 import sys
 import logging
+import threading
+import select
 from datetime import datetime, timedelta
 
 # Configure logging
@@ -17,7 +20,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Simple in-memory session storage (in production, use proper session management)
 sessions = {}
@@ -442,6 +446,160 @@ def health():
     """Health check endpoint"""
     return jsonify({'status': 'healthy'})
 
+# WebSocket handlers for interactive terminal
+active_terminals = {}
+
+@socketio.on('connect', namespace='/terminal')
+def handle_connect():
+    """Handle WebSocket connection"""
+    logger.info(f"Client connected to terminal WebSocket: {request.sid}")
+
+@socketio.on('disconnect', namespace='/terminal')
+def handle_disconnect():
+    """Handle WebSocket disconnection"""
+    logger.info(f"Client disconnected from terminal WebSocket: {request.sid}")
+    # Clean up any active terminal sessions
+    if request.sid in active_terminals:
+        try:
+            exec_instance = active_terminals[request.sid]['exec']
+            # Try to stop the exec instance
+            if hasattr(exec_instance, 'kill'):
+                exec_instance.kill()
+        except:
+            pass
+        del active_terminals[request.sid]
+
+@socketio.on('start_terminal', namespace='/terminal')
+def handle_start_terminal(data):
+    """Start an interactive terminal session"""
+    try:
+        container_id = data.get('container_id')
+        token = data.get('token')
+        cols = data.get('cols', 80)
+        rows = data.get('rows', 24)
+
+        # Validate token
+        if not token or token not in sessions:
+            emit('error', {'error': 'Unauthorized'})
+            disconnect()
+            return
+
+        # Get Docker client and container
+        client = get_docker_client()
+        if not client:
+            emit('error', {'error': 'Cannot connect to Docker'})
+            return
+
+        container = client.containers.get(container_id)
+
+        # Create an interactive bash session with PTY
+        exec_instance = container.exec_run(
+            ['/bin/bash'],
+            stdin=True,
+            stdout=True,
+            stderr=True,
+            tty=True,
+            socket=True,
+            environment={
+                'TERM': 'xterm-256color',
+                'COLUMNS': str(cols),
+                'LINES': str(rows),
+                'LANG': 'C.UTF-8'
+            }
+        )
+
+        # Store the exec instance
+        active_terminals[request.sid] = {
+            'exec': exec_instance,
+            'container_id': container_id
+        }
+
+        # Start a thread to read from the container and send to client
+        def read_output():
+            sock = exec_instance.output
+            try:
+                while True:
+                    # Check if socket is still connected
+                    if request.sid not in active_terminals:
+                        break
+
+                    try:
+                        # Read data from container
+                        data = sock.recv(4096)
+                        if not data:
+                            break
+
+                        # Send to client
+                        try:
+                            decoded_data = data.decode('utf-8')
+                        except UnicodeDecodeError:
+                            decoded_data = data.decode('latin-1', errors='replace')
+
+                        socketio.emit('output', {'data': decoded_data},
+                                    namespace='/terminal', room=request.sid)
+                    except Exception as e:
+                        logger.error(f"Error reading from container: {e}")
+                        break
+            finally:
+                # Clean up
+                if request.sid in active_terminals:
+                    del active_terminals[request.sid]
+                try:
+                    sock.close()
+                except:
+                    pass
+                socketio.emit('exit', {'code': 0},
+                            namespace='/terminal', room=request.sid)
+
+        # Start the output reader thread
+        output_thread = threading.Thread(target=read_output, daemon=True)
+        output_thread.start()
+
+        emit('started', {'message': 'Terminal started'})
+
+    except Exception as e:
+        logger.error(f"Error starting terminal: {e}", exc_info=True)
+        emit('error', {'error': str(e)})
+
+@socketio.on('input', namespace='/terminal')
+def handle_input(data):
+    """Handle input from the client"""
+    try:
+        if request.sid not in active_terminals:
+            emit('error', {'error': 'No active terminal session'})
+            return
+
+        terminal_data = active_terminals[request.sid]
+        exec_instance = terminal_data['exec']
+        input_data = data.get('data', '')
+
+        # Send input to the container
+        sock = exec_instance.output
+        sock.send(input_data.encode('utf-8'))
+
+    except Exception as e:
+        logger.error(f"Error sending input: {e}", exc_info=True)
+        emit('error', {'error': str(e)})
+
+@socketio.on('resize', namespace='/terminal')
+def handle_resize(data):
+    """Handle terminal resize"""
+    try:
+        cols = data.get('cols', 80)
+        rows = data.get('rows', 24)
+
+        if request.sid in active_terminals:
+            terminal_data = active_terminals[request.sid]
+            exec_instance = terminal_data['exec']
+
+            # Note: Docker exec_run doesn't support resizing after creation
+            # This is a limitation of the Docker API
+            # We acknowledge the resize but can't actually resize the PTY
+            logger.info(f"Terminal resize requested: {cols}x{rows}")
+
+    except Exception as e:
+        logger.error(f"Error resizing terminal: {e}", exc_info=True)
+
 if __name__ == '__main__':
     # Run diagnostics on startup
     logger.info("Backend server starting...")
@@ -454,4 +612,4 @@ if __name__ == '__main__':
     else:
         logger.error("✗ Docker connection FAILED on startup - check logs above for details")
 
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

@@ -14,9 +14,16 @@ import {
   Paper,
   useMediaQuery,
   useTheme,
+  ToggleButtonGroup,
+  ToggleButton,
+  Tooltip,
 } from '@mui/material';
-import { Close, Send } from '@mui/icons-material';
-import { apiClient } from '@/lib/api';
+import { Close, Send, Terminal as TerminalIcon, Code } from '@mui/icons-material';
+import { apiClient, API_BASE_URL } from '@/lib/api';
+import { io, Socket } from 'socket.io-client';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 
 interface TerminalModalProps {
   open: boolean;
@@ -39,18 +46,153 @@ export default function TerminalModal({
 }: TerminalModalProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Mode selection: 'simple' or 'interactive'
+  const [mode, setMode] = useState<'simple' | 'interactive'>('interactive');
+
+  // Simple mode state
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [workdir, setWorkdir] = useState('/');
   const outputRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when output changes
+  // Interactive mode state
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+
+  // Auto-scroll to bottom when output changes (simple mode)
   useEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [output]);
+
+  // Initialize interactive terminal
+  useEffect(() => {
+    if (!open || mode !== 'interactive' || !terminalRef.current) return;
+
+    // Create terminal instance
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: isMobile ? 12 : 14,
+      fontFamily: '"Ubuntu Mono", "Courier New", monospace',
+      theme: {
+        background: '#300A24',
+        foreground: '#F8F8F2',
+        cursor: '#F8F8F2',
+        black: '#2C0922',
+        red: '#FF5555',
+        green: '#50FA7B',
+        yellow: '#F1FA8C',
+        blue: '#8BE9FD',
+        magenta: '#FF79C6',
+        cyan: '#8BE9FD',
+        white: '#F8F8F2',
+        brightBlack: '#6272A4',
+        brightRed: '#FF6E6E',
+        brightGreen: '#69FF94',
+        brightYellow: '#FFFFA5',
+        brightBlue: '#D6ACFF',
+        brightMagenta: '#FF92DF',
+        brightCyan: '#A4FFFF',
+        brightWhite: '#FFFFFF',
+      },
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(terminalRef.current);
+
+    // Fit terminal to container
+    setTimeout(() => {
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        console.error('Error fitting terminal:', e);
+      }
+    }, 0);
+
+    xtermRef.current = term;
+    fitAddonRef.current = fitAddon;
+
+    // Connect to WebSocket
+    const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
+    const socket = io(`${wsUrl}/terminal`, {
+      transports: ['websocket', 'polling'],
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('WebSocket connected');
+      // Start terminal session
+      const token = apiClient.getToken();
+      const termSize = fitAddon.proposeDimensions();
+      socket.emit('start_terminal', {
+        container_id: containerId,
+        token: token,
+        cols: termSize?.cols || 80,
+        rows: termSize?.rows || 24,
+      });
+    });
+
+    socket.on('started', () => {
+      term.write('\r\n*** Interactive Terminal Started ***\r\n');
+      term.write('You can now use sudo, nano, vim, and other interactive commands.\r\n\r\n');
+    });
+
+    socket.on('output', (data: { data: string }) => {
+      term.write(data.data);
+    });
+
+    socket.on('error', (data: { error: string }) => {
+      term.write(`\r\n\x1b[31mError: ${data.error}\x1b[0m\r\n`);
+    });
+
+    socket.on('exit', () => {
+      term.write('\r\n\r\n*** Terminal Session Ended ***\r\n');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('WebSocket disconnected');
+    });
+
+    // Handle terminal input
+    term.onData((data) => {
+      socket.emit('input', { data });
+    });
+
+    // Handle terminal resize
+    const handleResize = () => {
+      try {
+        fitAddon.fit();
+        const termSize = fitAddon.proposeDimensions();
+        if (termSize) {
+          socket.emit('resize', {
+            cols: termSize.cols,
+            rows: termSize.rows,
+          });
+        }
+      } catch (e) {
+        console.error('Error resizing terminal:', e);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      term.dispose();
+      socket.disconnect();
+      xtermRef.current = null;
+      socketRef.current = null;
+      fitAddonRef.current = null;
+    };
+  }, [open, mode, containerId, isMobile]);
 
   const handleExecute = async () => {
     if (!command.trim()) return;
@@ -78,6 +220,12 @@ export default function TerminalModal({
           type: result.exit_code === 0 ? 'output' : 'error',
           content: result.output
         }]);
+      } else if (command.trim().startsWith('ls')) {
+        // If ls command returns empty output, indicate empty directory
+        setOutput((prev) => [...prev, {
+          type: 'output',
+          content: '(empty directory)'
+        }]);
       }
     } catch (error) {
       setOutput((prev) => [...prev, {
@@ -98,10 +246,29 @@ export default function TerminalModal({
   };
 
   const handleClose = () => {
+    // Cleanup interactive terminal
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    if (xtermRef.current) {
+      xtermRef.current.dispose();
+    }
+
+    // Reset simple mode state
     setOutput([]);
     setCommand('');
     setWorkdir('/');
+
     onClose();
+  };
+
+  const handleModeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newMode: 'simple' | 'interactive' | null,
+  ) => {
+    if (newMode !== null) {
+      setMode(newMode);
+    }
   };
 
   const formatPrompt = (workdir: string) => {
@@ -166,166 +333,213 @@ export default function TerminalModal({
           pb: 2,
           pt: { xs: 1, sm: 2 },
           px: { xs: 2, sm: 3 },
+          flexWrap: 'wrap',
+          gap: 2,
         }}
       >
-        <Typography
-          variant="h2"
-          component="div"
-          sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}
-        >
-          Terminal - {containerName}
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
+          <Typography
+            variant="h2"
+            component="div"
+            sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}
+          >
+            Terminal - {containerName}
+          </Typography>
+          <ToggleButtonGroup
+            value={mode}
+            exclusive
+            onChange={handleModeChange}
+            size="small"
+            sx={{ display: 'flex' }}
+          >
+            <Tooltip title="Interactive mode with full terminal support (sudo, nano, vim)">
+              <ToggleButton value="interactive" sx={{ flex: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                <TerminalIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                Interactive
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title="Simple command execution mode">
+              <ToggleButton value="simple" sx={{ flex: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                <Code sx={{ mr: 0.5, fontSize: '1rem' }} />
+                Simple
+              </ToggleButton>
+            </Tooltip>
+          </ToggleButtonGroup>
+        </Box>
         <IconButton onClick={handleClose} size="small">
           <Close />
         </IconButton>
       </DialogTitle>
 
       <DialogContent dividers>
-        <Paper
-          ref={outputRef}
-          elevation={0}
-          sx={{
-            backgroundColor: '#300A24',
-            color: '#F8F8F2',
-            fontFamily: '"Ubuntu Mono", "Courier New", monospace',
-            fontSize: { xs: '12px', sm: '14px' },
-            padding: { xs: 1.5, sm: 2 },
-            minHeight: { xs: '300px', sm: '400px' },
-            maxHeight: { xs: '400px', sm: '500px' },
-            overflowY: 'auto',
-            mb: 2,
-            border: '1px solid #5E2750',
-            borderRadius: '4px',
-            '&::-webkit-scrollbar': {
-              width: { xs: '6px', sm: '10px' },
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#2C0922',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#5E2750',
-              borderRadius: '5px',
-              '&:hover': {
-                background: '#772953',
-              }
-            },
-          }}
-        >
-          {output.length === 0 ? (
-            <Box>
-              <Typography sx={{
-                color: '#8BE9FD',
-                fontFamily: 'inherit',
-                fontSize: '13px',
-                mb: 1
-              }}>
-                Ubuntu-style Terminal - Connected to <span style={{ color: '#50FA7B', fontWeight: 'bold' }}>{containerName}</span>
-              </Typography>
-              <Typography sx={{
-                color: '#6272A4',
-                fontFamily: 'inherit',
-                fontSize: '12px'
-              }}>
-                Type a command and press Enter or click Execute...
-              </Typography>
-            </Box>
-          ) : (
-            <Box>
-              {output.map((line, index) => (
-                <React.Fragment key={index}>
-                  {highlightCommand(line)}
-                </React.Fragment>
-              ))}
-            </Box>
-          )}
-        </Paper>
-
-        <Box sx={{
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          gap: 1,
-          alignItems: isMobile ? 'stretch' : 'center'
-        }}>
-          <Typography sx={{
-            fontFamily: '"Ubuntu Mono", monospace',
-            fontSize: { xs: '12px', sm: '14px' },
-            color: '#8BE9FD',
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            alignSelf: isMobile ? 'flex-start' : 'center'
-          }}>
-            {formatPrompt(workdir)}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flex: 1 }}>
-            <TextField
-              fullWidth
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="ls -la"
-              disabled={isExecuting}
-              variant="outlined"
-              size="small"
-              autoFocus
+        {mode === 'interactive' ? (
+          /* Interactive terminal with xterm.js */
+          <Box
+            ref={terminalRef}
+            sx={{
+              height: { xs: '400px', sm: '500px' },
+              backgroundColor: '#300A24',
+              borderRadius: '4px',
+              border: '1px solid #5E2750',
+              overflow: 'hidden',
+              '& .xterm': {
+                padding: '8px',
+              },
+              '& .xterm-viewport': {
+                backgroundColor: '#300A24 !important',
+              },
+            }}
+          />
+        ) : (
+          /* Simple command execution mode */
+          <>
+            <Paper
+              ref={outputRef}
+              elevation={0}
               sx={{
-                fontFamily: '"Ubuntu Mono", monospace',
-                '& input': {
-                  fontFamily: '"Ubuntu Mono", monospace',
-                  fontSize: { xs: '12px', sm: '14px' },
-                  padding: { xs: '6px 10px', sm: '8px 12px' },
-                  color: '#F8F8F2',
+                backgroundColor: '#300A24',
+                color: '#F8F8F2',
+                fontFamily: '"Ubuntu Mono", "Courier New", monospace',
+                fontSize: { xs: '12px', sm: '14px' },
+                padding: { xs: 1.5, sm: 2 },
+                minHeight: { xs: '300px', sm: '400px' },
+                maxHeight: { xs: '400px', sm: '500px' },
+                overflowY: 'auto',
+                mb: 2,
+                border: '1px solid #5E2750',
+                borderRadius: '4px',
+                '&::-webkit-scrollbar': {
+                  width: { xs: '6px', sm: '10px' },
                 },
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#1E1E1E',
-                  '& fieldset': {
-                    borderColor: '#5E2750',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: '#772953',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#8BE9FD',
-                  },
+                '&::-webkit-scrollbar-track': {
+                  background: '#2C0922',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#5E2750',
+                  borderRadius: '5px',
+                  '&:hover': {
+                    background: '#772953',
+                  }
                 },
               }}
-            />
-            {isMobile ? (
-              <IconButton
-                onClick={handleExecute}
-                disabled={isExecuting || !command.trim()}
-                sx={{
-                  backgroundColor: '#5E2750',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: '#772953',
-                  },
-                  '&:disabled': {
-                    backgroundColor: '#3a1a2f',
-                  },
-                }}
-              >
-                <Send />
-              </IconButton>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={handleExecute}
-                disabled={isExecuting || !command.trim()}
-                startIcon={<Send />}
-                sx={{
-                  backgroundColor: '#5E2750',
-                  '&:hover': {
-                    backgroundColor: '#772953',
-                  },
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                }}
-              >
-                Run
-              </Button>
-            )}
-          </Box>
-        </Box>
+            >
+              {output.length === 0 ? (
+                <Box>
+                  <Typography sx={{
+                    color: '#8BE9FD',
+                    fontFamily: 'inherit',
+                    fontSize: '13px',
+                    mb: 1
+                  }}>
+                    Ubuntu-style Terminal - Connected to <span style={{ color: '#50FA7B', fontWeight: 'bold' }}>{containerName}</span>
+                  </Typography>
+                  <Typography sx={{
+                    color: '#6272A4',
+                    fontFamily: 'inherit',
+                    fontSize: '12px'
+                  }}>
+                    Type a command and press Enter or click Execute...
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  {output.map((line, index) => (
+                    <React.Fragment key={index}>
+                      {highlightCommand(line)}
+                    </React.Fragment>
+                  ))}
+                </Box>
+              )}
+            </Paper>
+
+            <Box sx={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: 1,
+              alignItems: isMobile ? 'stretch' : 'center'
+            }}>
+              <Typography sx={{
+                fontFamily: '"Ubuntu Mono", monospace',
+                fontSize: { xs: '12px', sm: '14px' },
+                color: '#8BE9FD',
+                fontWeight: 'bold',
+                whiteSpace: 'nowrap',
+                alignSelf: isMobile ? 'flex-start' : 'center'
+              }}>
+                {formatPrompt(workdir)}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flex: 1 }}>
+                <TextField
+                  fullWidth
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="ls -la"
+                  disabled={isExecuting}
+                  variant="outlined"
+                  size="small"
+                  autoFocus
+                  sx={{
+                    fontFamily: '"Ubuntu Mono", monospace',
+                    '& input': {
+                      fontFamily: '"Ubuntu Mono", monospace',
+                      fontSize: { xs: '12px', sm: '14px' },
+                      padding: { xs: '6px 10px', sm: '8px 12px' },
+                      color: '#F8F8F2',
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#1E1E1E',
+                      '& fieldset': {
+                        borderColor: '#5E2750',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#772953',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#8BE9FD',
+                      },
+                    },
+                  }}
+                />
+                {isMobile ? (
+                  <IconButton
+                    onClick={handleExecute}
+                    disabled={isExecuting || !command.trim()}
+                    sx={{
+                      backgroundColor: '#5E2750',
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: '#772953',
+                      },
+                      '&:disabled': {
+                        backgroundColor: '#3a1a2f',
+                      },
+                    }}
+                  >
+                    <Send />
+                  </IconButton>
+                ) : (
+                  <Button
+                    variant="contained"
+                    onClick={handleExecute}
+                    disabled={isExecuting || !command.trim()}
+                    startIcon={<Send />}
+                    sx={{
+                      backgroundColor: '#5E2750',
+                      '&:hover': {
+                        backgroundColor: '#772953',
+                      },
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    Run
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </>
+        )}
       </DialogContent>
 
       <DialogActions>
