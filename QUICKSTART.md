@@ -19,7 +19,21 @@ Get up and running with Docker Swarm Terminal in minutes.
    - Go to "Deployment" tab
    - Upload the `.tar` file (uncompressed - required by CapRover)
 3. Wait for deployment to complete
-4. Check logs for: `✓ Docker connection verified on startup`
+4. **Check logs for: `✓ Docker connection verified on startup`**
+
+**⚠️ IMPORTANT**: If you see `✗ Docker socket NOT found`, you must manually apply the mount:
+
+```bash
+# SSH into your CapRover server
+ssh root@your-server.com
+
+# Apply the Docker socket mount
+docker service update \
+  --mount-add type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+  srv-captain--terminalbackend
+```
+
+See [CAPROVER_TROUBLESHOOTING.md](CAPROVER_TROUBLESHOOTING.md) for details.
 
 ### Frontend
 
@@ -48,6 +62,14 @@ caprover deploy
 
 # Check logs
 caprover logs terminalbackend --follow
+```
+
+**⚠️ IMPORTANT**: If logs show `✗ Docker socket NOT found`, manually apply the mount on your CapRover server:
+
+```bash
+docker service update \
+  --mount-add type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+  srv-captain--terminalbackend
 ```
 
 ### Frontend

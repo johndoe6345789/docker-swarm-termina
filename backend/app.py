@@ -39,6 +39,22 @@ def diagnose_docker_environment():
     logger.info(f"DOCKER_CERT_PATH: {docker_cert_path}")
     logger.info(f"DOCKER_TLS_VERIFY: {docker_tls_verify}")
 
+    # Check what's in /var/run
+    logger.info("Checking /var/run directory contents:")
+    try:
+        if os.path.exists('/var/run'):
+            var_run_contents = os.listdir('/var/run')
+            logger.info(f"  /var/run contains: {var_run_contents}")
+
+            # Check for any Docker-related files
+            docker_related = [f for f in var_run_contents if 'docker' in f.lower()]
+            if docker_related:
+                logger.info(f"  Docker-related files/dirs found: {docker_related}")
+        else:
+            logger.warning("  /var/run directory doesn't exist")
+    except Exception as e:
+        logger.error(f"  Error reading /var/run: {e}")
+
     # Check Docker socket
     socket_path = '/var/run/docker.sock'
     logger.info(f"Checking Docker socket at {socket_path}")
@@ -63,6 +79,8 @@ def diagnose_docker_environment():
             logger.warning(f"⚠ Socket exists but lacks proper permissions!")
     else:
         logger.error(f"✗ Docker socket NOT found at {socket_path}")
+        logger.error(f"  This means the Docker socket mount is NOT configured in CapRover")
+        logger.error(f"  The serviceUpdateOverride in captain-definition may not be applied")
 
     # Check current user
     import pwd

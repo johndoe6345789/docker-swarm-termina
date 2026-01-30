@@ -71,6 +71,25 @@ The `backend/captain-definition` file contains critical configuration:
 
 5. **Replicas**: Set to 1 (multiple replicas can't share the same socket)
 
+### ⚠️ IMPORTANT: serviceUpdateOverride Limitation
+
+**The `serviceUpdateOverride` in `captain-definition` may not be applied automatically by CapRover.** This is a known limitation with some CapRover versions.
+
+**If you see "Docker socket NOT found" in your logs**, you MUST manually apply the Docker socket mount after deployment.
+
+**Quick Fix** (run on your CapRover server):
+```bash
+# SSH into your CapRover server
+ssh root@your-server.com
+
+# Apply the mount (replace with your service name)
+docker service update \
+  --mount-add type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+  srv-captain--terminalbackend
+```
+
+**See [CAPROVER_TROUBLESHOOTING.md](CAPROVER_TROUBLESHOOTING.md) for detailed instructions.**
+
 ### Security Considerations
 
 **IMPORTANT**: Granting Docker socket access to a container is a security-sensitive operation. The container effectively has root access to the host system.
@@ -116,27 +135,79 @@ caprover deploy
 
 Or manually:
 
-1. Create a tarball: `tar -czf backend.tar.gz .`
+1. Create a tarball: `tar -cf backend.tar .`
 2. Upload via CapRover dashboard
 3. Wait for deployment to complete
 
-#### 4. Verify Deployment
+#### 4. **CRITICAL: Verify and Apply Docker Socket Mount**
 
-Check the application logs in CapRover dashboard. You should see:
+After deployment, check if the Docker socket is mounted:
 
+**a) Check Application Logs** (in CapRover dashboard):
+
+Look for:
 ```
-=== Docker Environment Diagnosis ===
-DOCKER_HOST: unix:///var/run/docker.sock
 ✓ Docker socket exists at /var/run/docker.sock
-Socket permissions: 0o140777
-Readable: True
-Writable: True
-Current user: root (UID: 0, GID: 0)
-✓ Successfully connected to Docker using Unix socket
 ✓ Docker connection verified on startup
 ```
 
-If you see errors, check the "Troubleshooting" section below.
+If you see:
+```
+✗ Docker socket NOT found at /var/run/docker.sock
+```
+
+Then the `serviceUpdateOverride` wasn't applied. **You must manually apply it.**
+
+**b) Manually Apply the Mount** (run on your CapRover server):
+
+```bash
+# SSH into your CapRover server
+ssh root@your-server.com
+
+# Find your service name
+docker service ls | grep terminalbackend
+# Should show something like: srv-captain--terminalbackend
+
+# Apply the Docker socket mount
+docker service update \
+  --mount-add type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+  srv-captain--terminalbackend
+```
+
+**c) Verify the Mount Was Applied**:
+
+```bash
+docker service inspect srv-captain--terminalbackend \
+  --format '{{json .Spec.TaskTemplate.ContainerSpec.Mounts}}' | python3 -m json.tool
+```
+
+Should show:
+```json
+[
+    {
+        "Type": "bind",
+        "Source": "/var/run/docker.sock",
+        "Target": "/var/run/docker.sock"
+    }
+]
+```
+
+**d) Wait for Service Restart**:
+
+The service will automatically restart with the new configuration. Monitor:
+```bash
+docker service ps srv-captain--terminalbackend
+```
+
+**e) Check Logs Again**:
+
+In CapRover dashboard, refresh the logs. You should now see:
+```
+✓ Docker socket exists at /var/run/docker.sock
+✓ Docker connection verified on startup
+```
+
+**See [CAPROVER_TROUBLESHOOTING.md](CAPROVER_TROUBLESHOOTING.md) for detailed troubleshooting.**
 
 #### 5. Test the API
 
@@ -184,33 +255,72 @@ caprover deploy
 
 ### "Cannot connect to Docker" Error
 
-If you see this error, check the following:
+**This is the most common issue!** CapRover's `serviceUpdateOverride` often doesn't apply automatically.
 
-1. **Verify captain-definition**: Ensure `serviceUpdateOverride` is present and correct
+#### Quick Fix (Run on CapRover Server)
 
-2. **Check logs for diagnostics**:
+```bash
+# SSH into your CapRover server
+ssh root@your-server.com
+
+# Apply the Docker socket mount manually
+docker service update \
+  --mount-add type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+  srv-captain--terminalbackend
+
+# Verify it worked
+docker service inspect srv-captain--terminalbackend \
+  --format '{{json .Spec.TaskTemplate.ContainerSpec.Mounts}}' | python3 -m json.tool
+```
+
+**📖 See [CAPROVER_TROUBLESHOOTING.md](CAPROVER_TROUBLESHOOTING.md) for complete step-by-step instructions.**
+
+#### Diagnostic Checklist
+
+If the quick fix doesn't work, check:
+
+1. **Check logs in CapRover dashboard** for:
    ```
-   === Docker Environment Diagnosis ===
+   ✗ Docker socket NOT found at /var/run/docker.sock
    ```
-   Look for:
-   - Socket existence
-   - Permissions (should be readable and writable)
-   - User info (should be root)
 
-3. **Common issues**:
+2. **Verify socket exists on host**:
+   ```bash
+   ls -la /var/run/docker.sock
+   ```
 
-   **Socket not found**:
-   - The mount configuration isn't being applied
-   - Redeploy the app after updating `captain-definition`
+3. **Check service is running as root**:
+   ```bash
+   docker service inspect srv-captain--terminalbackend \
+     --format '{{.Spec.TaskTemplate.ContainerSpec.User}}'
+   ```
+   Should return: `root`
 
-   **Permission denied**:
-   - User isn't root
-   - Socket permissions are wrong
-   - Check that `"User": "root"` is in captain-definition
+4. **Check Docker version compatibility**:
+   ```bash
+   docker version
+   ```
 
-   **Connection refused**:
-   - Docker daemon isn't running on the host
-   - Check CapRover host: `docker info`
+5. **Review SELinux/AppArmor** if on RHEL/Ubuntu:
+   ```bash
+   getenforce  # Should be Permissive or Disabled for testing
+   ```
+
+#### Common Issues
+
+**Socket not found**:
+- ✅ **Solution**: Manually apply mount (see Quick Fix above)
+- The `serviceUpdateOverride` wasn't applied by CapRover
+
+**Permission denied**:
+- ✅ **Solution**: Ensure service runs as root:
+  ```bash
+  docker service update --user root srv-captain--terminalbackend
+  ```
+
+**Connection refused / "Not supported URL scheme http+docker"**:
+- ✅ **Solution**: Update docker library version in `requirements.txt` to `docker==7.1.0`
+- Redeploy the application
 
 ### Viewing Logs
 
