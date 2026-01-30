@@ -1,5 +1,7 @@
-export const API_BASE_URL = 
-  typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_API_URL 
+import { triggerAuthError } from './store/authErrorHandler';
+
+export const API_BASE_URL =
+  typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_API_URL
     ? (window as any).__ENV__.NEXT_PUBLIC_API_URL
     : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -31,6 +33,7 @@ class ApiClient {
       localStorage.setItem('auth_token', token);
     } else {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_username');
     }
   }
 
@@ -39,6 +42,23 @@ class ApiClient {
       this.token = localStorage.getItem('auth_token');
     }
     return this.token;
+  }
+
+  getUsername(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_username');
+    }
+    return null;
+  }
+
+  setUsername(username: string | null) {
+    if (typeof window !== 'undefined') {
+      if (username) {
+        localStorage.setItem('auth_username', username);
+      } else {
+        localStorage.removeItem('auth_username');
+      }
+    }
   }
 
   async login(username: string, password: string): Promise<AuthResponse> {
@@ -53,6 +73,7 @@ class ApiClient {
     const data = await response.json();
     if (data.success && data.token) {
       this.setToken(data.token);
+      this.setUsername(data.username || username);
     }
     return data;
   }
@@ -73,6 +94,7 @@ class ApiClient {
   async getContainers(): Promise<Container[]> {
     const token = this.getToken();
     if (!token) {
+      triggerAuthError();
       throw new Error('Not authenticated');
     }
 
@@ -85,6 +107,7 @@ class ApiClient {
     if (!response.ok) {
       if (response.status === 401) {
         this.setToken(null);
+        triggerAuthError();
         throw new Error('Session expired');
       }
       throw new Error('Failed to fetch containers');
@@ -97,6 +120,7 @@ class ApiClient {
   async executeCommand(containerId: string, command: string): Promise<any> {
     const token = this.getToken();
     if (!token) {
+      triggerAuthError();
       throw new Error('Not authenticated');
     }
 
@@ -110,6 +134,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null);
+        triggerAuthError();
+        throw new Error('Session expired');
+      }
       throw new Error('Failed to execute command');
     }
 
@@ -119,6 +148,7 @@ class ApiClient {
   async startContainer(containerId: string): Promise<any> {
     const token = this.getToken();
     if (!token) {
+      triggerAuthError();
       throw new Error('Not authenticated');
     }
 
@@ -130,6 +160,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null);
+        triggerAuthError();
+        throw new Error('Session expired');
+      }
       const error = await response.json();
       throw new Error(error.error || 'Failed to start container');
     }
@@ -140,6 +175,7 @@ class ApiClient {
   async stopContainer(containerId: string): Promise<any> {
     const token = this.getToken();
     if (!token) {
+      triggerAuthError();
       throw new Error('Not authenticated');
     }
 
@@ -151,6 +187,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null);
+        triggerAuthError();
+        throw new Error('Session expired');
+      }
       const error = await response.json();
       throw new Error(error.error || 'Failed to stop container');
     }
@@ -161,6 +202,7 @@ class ApiClient {
   async restartContainer(containerId: string): Promise<any> {
     const token = this.getToken();
     if (!token) {
+      triggerAuthError();
       throw new Error('Not authenticated');
     }
 
@@ -172,6 +214,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null);
+        triggerAuthError();
+        throw new Error('Session expired');
+      }
       const error = await response.json();
       throw new Error(error.error || 'Failed to restart container');
     }
@@ -182,6 +229,7 @@ class ApiClient {
   async removeContainer(containerId: string): Promise<any> {
     const token = this.getToken();
     if (!token) {
+      triggerAuthError();
       throw new Error('Not authenticated');
     }
 
@@ -193,6 +241,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null);
+        triggerAuthError();
+        throw new Error('Session expired');
+      }
       const error = await response.json();
       throw new Error(error.error || 'Failed to remove container');
     }

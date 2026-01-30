@@ -1,0 +1,208 @@
+import { useRef, useEffect } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { apiClient, API_BASE_URL } from '@/lib/api';
+import type { Terminal } from '@xterm/xterm';
+import type { FitAddon } from '@xterm/addon-fit';
+
+interface UseInteractiveTerminalProps {
+  open: boolean;
+  containerId: string;
+  containerName: string;
+  isMobile: boolean;
+  onFallback: (reason: string) => void;
+}
+
+export function useInteractiveTerminal({
+  open,
+  containerId,
+  containerName,
+  isMobile,
+  onFallback,
+}: UseInteractiveTerminalProps) {
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const connectionAttempts = useRef(0);
+
+  useEffect(() => {
+    if (!open || !terminalRef.current) return;
+
+    let term: Terminal | null = null;
+    let fitAddon: FitAddon | null = null;
+    let socket: Socket | null = null;
+
+    const initTerminal = async () => {
+      try {
+        const [{ Terminal }, { FitAddon }] = await Promise.all([
+          import('@xterm/xterm'),
+          import('@xterm/addon-fit'),
+        ]);
+
+        if (!terminalRef.current) return;
+
+        term = new Terminal({
+          cursorBlink: true,
+          fontSize: isMobile ? 12 : 14,
+          fontFamily: '"Ubuntu Mono", "Courier New", monospace',
+          theme: {
+            background: '#300A24',
+            foreground: '#F8F8F2',
+            cursor: '#F8F8F2',
+            black: '#2C0922',
+            red: '#FF5555',
+            green: '#50FA7B',
+            yellow: '#F1FA8C',
+            blue: '#8BE9FD',
+            magenta: '#FF79C6',
+            cyan: '#8BE9FD',
+            white: '#F8F8F2',
+            brightBlack: '#6272A4',
+            brightRed: '#FF6E6E',
+            brightGreen: '#69FF94',
+            brightYellow: '#FFFFA5',
+            brightBlue: '#D6ACFF',
+            brightMagenta: '#FF92DF',
+            brightCyan: '#A4FFFF',
+            brightWhite: '#FFFFFF',
+          },
+        });
+
+        fitAddon = new FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(terminalRef.current);
+
+        setTimeout(() => {
+          try {
+            if (fitAddon) fitAddon.fit();
+          } catch (e) {
+            console.error('Error fitting terminal:', e);
+          }
+        }, 0);
+
+        xtermRef.current = term;
+        fitAddonRef.current = fitAddon;
+
+        const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
+        socket = io(`${wsUrl}/terminal`, {
+          transports: ['websocket', 'polling'],
+        });
+
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          console.log('WebSocket connected');
+          connectionAttempts.current = 0;
+
+          const token = apiClient.getToken();
+          const termSize = fitAddon?.proposeDimensions();
+          socket?.emit('start_terminal', {
+            container_id: containerId,
+            token: token,
+            cols: termSize?.cols || 80,
+            rows: termSize?.rows || 24,
+          });
+        });
+
+        socket.on('connect_error', (error) => {
+          console.error('WebSocket connection error:', error);
+          connectionAttempts.current++;
+
+          if (connectionAttempts.current >= 2) {
+            onFallback('Failed to establish WebSocket connection. Network or server may be unavailable.');
+          }
+        });
+
+        socket.on('started', () => {
+          term?.write('\r\n*** Interactive Terminal Started ***\r\n');
+          term?.write('You can now use sudo, nano, vim, and other interactive commands.\r\n\r\n');
+        });
+
+        socket.on('output', (data: { data: string }) => {
+          term?.write(data.data);
+        });
+
+        socket.on('error', (data: { error: string }) => {
+          console.error('Terminal error:', data.error);
+          term?.write(`\r\n\x1b[31mError: ${data.error}\x1b[0m\r\n`);
+
+          const criticalErrors = ['Unauthorized', 'Cannot connect to Docker', 'Invalid session'];
+          if (criticalErrors.some(err => data.error.includes(err))) {
+            setTimeout(() => {
+              onFallback(`Interactive terminal failed: ${data.error}`);
+            }, 2000);
+          }
+        });
+
+        socket.on('exit', () => {
+          term?.write('\r\n\r\n*** Terminal Session Ended ***\r\n');
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('WebSocket disconnected:', reason);
+
+          if (reason === 'transport error' || reason === 'transport close') {
+            onFallback('WebSocket connection lost unexpectedly.');
+          }
+        });
+
+        term.onData((data) => {
+          socket?.emit('input', { data });
+        });
+
+        const handleResize = () => {
+          try {
+            if (fitAddon) {
+              fitAddon.fit();
+              const termSize = fitAddon.proposeDimensions();
+              if (termSize) {
+                socket?.emit('resize', {
+                  cols: termSize.cols,
+                  rows: termSize.rows,
+                });
+              }
+            }
+          } catch (e) {
+            console.error('Error resizing terminal:', e);
+          }
+        };
+
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+          window.removeEventListener('resize', handleResize);
+          if (term) term.dispose();
+          if (socket) socket.disconnect();
+        };
+      } catch (error) {
+        console.error('Failed to initialize terminal:', error);
+        onFallback('Failed to load terminal. Switching to simple mode.');
+      }
+    };
+
+    const cleanup = initTerminal();
+
+    return () => {
+      cleanup.then((cleanupFn) => {
+        if (cleanupFn) cleanupFn();
+      });
+      xtermRef.current = null;
+      socketRef.current = null;
+      fitAddonRef.current = null;
+    };
+  }, [open, containerId, isMobile, onFallback]);
+
+  const cleanup = () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    if (xtermRef.current) {
+      xtermRef.current.dispose();
+    }
+  };
+
+  return {
+    terminalRef,
+    cleanup,
+  };
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -11,31 +11,19 @@ import {
   Alert,
 } from '@mui/material';
 import { LockOpen } from '@mui/icons-material';
-import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
+import { useLoginForm } from '@/lib/hooks/useLoginForm';
 
 export default function LoginForm() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isShaking, setIsShaking] = useState(false);
-  const { login } = useAuth();
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    const success = await login(username, password);
-
-    if (success) {
-      router.push('/dashboard');
-    } else {
-      setError('Invalid credentials');
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 500);
-    }
-  };
+  const {
+    username,
+    setUsername,
+    password,
+    setPassword,
+    isShaking,
+    error,
+    loading,
+    handleSubmit,
+  } = useLoginForm();
 
   return (
     <Box
@@ -121,8 +109,9 @@ export default function LoginForm() {
               color="secondary"
               size="large"
               sx={{ mb: 2 }}
+              disabled={loading}
             >
-              Access Dashboard
+              {loading ? 'Logging in...' : 'Access Dashboard'}
             </Button>
 
             <Typography
