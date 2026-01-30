@@ -52,3 +52,9 @@ out/
 build/
 .vercel
 
+# CapRover releases (keep README)
+releases/*.tar
+releases/*.tar.gz
+releases/checksums-*.txt
+releases/DEPLOYMENT-*.txt
+

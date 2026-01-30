@@ -54,6 +54,48 @@ Run the container:
 docker run -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock docker-swarm-backend
 ```
 
+## Debugging
+
+The application includes comprehensive Docker connection diagnostics that run automatically on startup. Check the logs for:
+
+- Docker environment variables (DOCKER_HOST, DOCKER_CERT_PATH, etc.)
+- Docker socket existence and permissions
+- Current user and group information
+- Connection attempt results
+
+Example output:
+```
+=== Docker Environment Diagnosis ===
+DOCKER_HOST: unix:///var/run/docker.sock
+✓ Docker socket exists at /var/run/docker.sock
+Socket permissions: 0o140777
+Readable: True
+Writable: True
+Current user: root (UID: 0, GID: 0)
+✓ Successfully connected to Docker using Unix socket
+✓ Docker connection verified on startup
+```
+
+If connection fails, the diagnostics will show detailed information about what's wrong.
+
+## CapRover Deployment
+
+For deploying to CapRover (which uses Docker Swarm), see the detailed guide in [CAPROVER_DEPLOYMENT.md](../CAPROVER_DEPLOYMENT.md).
+
+Key points:
+- Uses `captain-definition` file with `serviceUpdateOverride` to mount Docker socket
+- Runs as root to access Docker socket
+- Includes enhanced debugging for troubleshooting connection issues
+- Only supports 1 replica (Docker socket can't be shared)
+
 ## Security
 
 ⚠️ This backend requires access to the Docker socket. Ensure proper security measures are in place in production environments.
+
+**Security Considerations:**
+- Container has root access to the host system via Docker socket
+- Implement strong authentication (change default credentials)
+- Restrict network access to the API
+- Only use in trusted environments
+- Monitor logs for suspicious activity
+- Consider using a Docker socket proxy for additional security

@@ -2,7 +2,19 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import docker
 import os
+import sys
+import logging
 from datetime import datetime, timedelta
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
@@ -14,12 +26,100 @@ sessions = {}
 ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 
-def get_docker_client():
-    """Get Docker client"""
+def diagnose_docker_environment():
+    """Diagnose Docker environment and configuration"""
+    logger.info("=== Docker Environment Diagnosis ===")
+
+    # Check environment variables
+    docker_host = os.getenv('DOCKER_HOST', 'Not set')
+    docker_cert_path = os.getenv('DOCKER_CERT_PATH', 'Not set')
+    docker_tls_verify = os.getenv('DOCKER_TLS_VERIFY', 'Not set')
+
+    logger.info(f"DOCKER_HOST: {docker_host}")
+    logger.info(f"DOCKER_CERT_PATH: {docker_cert_path}")
+    logger.info(f"DOCKER_TLS_VERIFY: {docker_tls_verify}")
+
+    # Check Docker socket
+    socket_path = '/var/run/docker.sock'
+    logger.info(f"Checking Docker socket at {socket_path}")
+
+    if os.path.exists(socket_path):
+        logger.info(f"✓ Docker socket exists at {socket_path}")
+
+        # Check permissions
+        import stat
+        st = os.stat(socket_path)
+        logger.info(f"  Socket permissions: {oct(st.st_mode)}")
+        logger.info(f"  Socket owner UID: {st.st_uid}")
+        logger.info(f"  Socket owner GID: {st.st_gid}")
+
+        # Check if readable/writable
+        readable = os.access(socket_path, os.R_OK)
+        writable = os.access(socket_path, os.W_OK)
+        logger.info(f"  Readable: {readable}")
+        logger.info(f"  Writable: {writable}")
+
+        if not (readable and writable):
+            logger.warning(f"⚠ Socket exists but lacks proper permissions!")
+    else:
+        logger.error(f"✗ Docker socket NOT found at {socket_path}")
+
+    # Check current user
+    import pwd
     try:
-        return docker.from_env()
+        current_uid = os.getuid()
+        current_gid = os.getgid()
+        user_info = pwd.getpwuid(current_uid)
+        logger.info(f"Current user: {user_info.pw_name} (UID: {current_uid}, GID: {current_gid})")
+
+        # Check groups
+        import grp
+        groups = os.getgroups()
+        logger.info(f"User groups (GIDs): {groups}")
+
+        for gid in groups:
+            try:
+                group_info = grp.getgrgid(gid)
+                logger.info(f"  - {group_info.gr_name} (GID: {gid})")
+            except:
+                logger.info(f"  - Unknown group (GID: {gid})")
     except Exception as e:
-        print(f"Error connecting to Docker: {e}")
+        logger.error(f"Error checking user info: {e}")
+
+    logger.info("=== End Diagnosis ===")
+
+def get_docker_client():
+    """Get Docker client with enhanced error reporting"""
+    try:
+        logger.info("Attempting to connect to Docker...")
+
+        # Try default connection first
+        try:
+            client = docker.from_env()
+            # Test the connection
+            client.ping()
+            logger.info("✓ Successfully connected to Docker using docker.from_env()")
+            return client
+        except Exception as e:
+            logger.warning(f"docker.from_env() failed: {e}")
+
+        # Try explicit Unix socket connection
+        try:
+            logger.info("Trying explicit Unix socket connection...")
+            client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
+            client.ping()
+            logger.info("✓ Successfully connected to Docker using Unix socket")
+            return client
+        except Exception as e:
+            logger.warning(f"Unix socket connection failed: {e}")
+
+        # If all fails, run diagnostics and return None
+        logger.error("All Docker connection attempts failed!")
+        diagnose_docker_environment()
+        return None
+
+    except Exception as e:
+        logger.error(f"Unexpected error in get_docker_client: {e}", exc_info=True)
         return None
 
 def format_uptime(created_at):
@@ -142,4 +242,15 @@ def health():
     return jsonify({'status': 'healthy'})
 
 if __name__ == '__main__':
+    # Run diagnostics on startup
+    logger.info("Backend server starting...")
+    diagnose_docker_environment()
+
+    # Try to get Docker client and log result
+    test_client = get_docker_client()
+    if test_client:
+        logger.info("✓ Docker connection verified on startup")
+    else:
+        logger.error("✗ Docker connection FAILED on startup - check logs above for details")
+
     app.run(host='0.0.0.0', port=5000, debug=True)
