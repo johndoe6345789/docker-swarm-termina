@@ -8,9 +8,24 @@
           {
             "Type": "bind",
             "Source": "/var/run/docker.sock",
-            "Target": "/var/run/docker.sock"
+            "Target": "/var/run/docker.sock",
+            "ReadOnly": false
           }
+        ],
+        "User": "root",
+        "Env": [
+          "DOCKER_HOST=unix:///var/run/docker.sock"
         ]
+      },
+      "RestartPolicy": {
+        "Condition": "any",
+        "Delay": 5000000000,
+        "MaxAttempts": 0
+      }
+    },
+    "Mode": {
+      "Replicated": {
+        "Replicas": 1
       }
     }
   }
