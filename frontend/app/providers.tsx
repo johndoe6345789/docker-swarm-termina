@@ -11,15 +11,15 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Initialize auth state
-    store.dispatch(initAuth());
-
     // Set up global auth error handler
-    setAuthErrorCallback(() => {
+   setAuthErrorCallback(() => {
       // Clear auth state and redirect to login
       store.dispatch(setUnauthenticated());
       router.push('/');
     });
+
+    // Initialize auth state
+    store.dispatch(initAuth());
   }, [router]);
 
   return <>{children}</>;
