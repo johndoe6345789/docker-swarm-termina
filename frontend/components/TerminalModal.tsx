@@ -255,6 +255,7 @@ export default function TerminalModal({
                 fontFamily: '"Ubuntu Mono", monospace',
                 fontSize: '14px',
                 padding: '8px 12px',
+                color: '#F8F8F2',
               },
               '& .MuiOutlinedInput-root': {
                 backgroundColor: '#1E1E1E',
@@ -267,9 +268,6 @@ export default function TerminalModal({
                 '&.Mui-focused fieldset': {
                   borderColor: '#8BE9FD',
                 },
-              },
-              '& input': {
-                color: '#F8F8F2',
               },
             }}
           />
