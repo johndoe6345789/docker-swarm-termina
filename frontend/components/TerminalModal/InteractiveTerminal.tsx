@@ -1,10 +1,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import '@xterm/xterm/css/xterm.css';
-
-interface InteractiveTerminalProps {
-  terminalRef: React.RefObject<HTMLDivElement | null>;
-}
+import { InteractiveTerminalProps } from '@/lib/interfaces/terminal';
 
 export default function InteractiveTerminal({ terminalRef }: InteractiveTerminalProps) {
   return (

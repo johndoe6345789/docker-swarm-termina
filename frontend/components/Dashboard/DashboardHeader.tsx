@@ -9,14 +9,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Logout, Refresh, Inventory2 } from '@mui/icons-material';
-
-interface DashboardHeaderProps {
-  containerCount: number;
-  isMobile: boolean;
-  isRefreshing: boolean;
-  onRefresh: () => void;
-  onLogout: () => void;
-}
+import { DashboardHeaderProps } from '@/lib/interfaces/dashboard';
 
 export default function DashboardHeader({
   containerCount,

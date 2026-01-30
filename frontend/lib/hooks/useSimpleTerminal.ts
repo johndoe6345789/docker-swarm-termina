@@ -1,11 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
-
-export interface OutputLine {
-  type: 'command' | 'output' | 'error';
-  content: string;
-  workdir?: string;
-}
+import { OutputLine } from '@/lib/interfaces/terminal';
 
 export function useSimpleTerminal(containerId: string) {
   const [command, setCommand] = useState('');

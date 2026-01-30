@@ -1,12 +1,7 @@
 import React from 'react';
 import { Box, Typography, Chip } from '@mui/material';
 import { PlayArrow, Inventory2 } from '@mui/icons-material';
-
-interface ContainerHeaderProps {
-  name: string;
-  image: string;
-  status: string;
-}
+import { ContainerHeaderProps } from '@/lib/interfaces/container';
 
 const statusColors = {
   running: 'success',

@@ -1,26 +1,8 @@
 import React from 'react';
 import { Box, Typography, TextField, Button, IconButton } from '@mui/material';
 import { Send } from '@mui/icons-material';
-
-interface CommandInputProps {
-  command: string;
-  workdir: string;
-  isExecuting: boolean;
-  isMobile: boolean;
-  containerName: string;
-  onCommandChange: (value: string) => void;
-  onExecute: () => void;
-  onKeyPress: (e: React.KeyboardEvent) => void;
-}
-
-const formatPrompt = (containerName: string, workdir: string) => {
-  let displayDir = workdir;
-  if (workdir.length > 30) {
-    const parts = workdir.split('/');
-    displayDir = '.../' + parts[parts.length - 1];
-  }
-  return `root@${containerName}:${displayDir}#`;
-};
+import { CommandInputProps } from '@/lib/interfaces/terminal';
+import { formatPrompt } from '@/lib/utils/terminal';
 
 export default function CommandInput({
   command,

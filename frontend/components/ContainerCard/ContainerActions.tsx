@@ -1,16 +1,7 @@
 import React from 'react';
 import { Box, Button, CircularProgress } from '@mui/material';
 import { PlayArrow, Stop, Refresh, Delete, Terminal } from '@mui/icons-material';
-
-interface ContainerActionsProps {
-  status: string;
-  isLoading: boolean;
-  onStart: () => void;
-  onStop: () => void;
-  onRestart: () => void;
-  onRemove: () => void;
-  onOpenShell: () => void;
-}
+import { ContainerActionsProps } from '@/lib/interfaces/container';
 
 export default function ContainerActions({
   status,

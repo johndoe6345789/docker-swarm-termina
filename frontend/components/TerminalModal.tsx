@@ -4,17 +4,11 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogActions, Button, useMediaQuery, useTheme } from '@mui/material';
 import { useSimpleTerminal } from '@/lib/hooks/useSimpleTerminal';
 import { useInteractiveTerminal } from '@/lib/hooks/useInteractiveTerminal';
+import { TerminalModalProps } from '@/lib/interfaces/terminal';
 import TerminalHeader from './TerminalModal/TerminalHeader';
 import SimpleTerminal from './TerminalModal/SimpleTerminal';
 import InteractiveTerminal from './TerminalModal/InteractiveTerminal';
 import FallbackNotification from './TerminalModal/FallbackNotification';
-
-interface TerminalModalProps {
-  open: boolean;
-  onClose: () => void;
-  containerName: string;
-  containerId: string;
-}
 
 export default function TerminalModal({
   open,

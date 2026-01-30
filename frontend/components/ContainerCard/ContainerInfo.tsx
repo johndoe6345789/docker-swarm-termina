@@ -1,10 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-
-interface ContainerInfoProps {
-  id: string;
-  uptime: string;
-}
+import { ContainerInfoProps } from '@/lib/interfaces/container';
 
 export default function ContainerInfo({ id, uptime }: ContainerInfoProps) {
   return (

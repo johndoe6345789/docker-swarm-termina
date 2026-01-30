@@ -1,13 +1,7 @@
 import React from 'react';
 import { Snackbar, Alert, Typography, Button } from '@mui/material';
 import { Warning } from '@mui/icons-material';
-
-interface FallbackNotificationProps {
-  show: boolean;
-  reason: string;
-  onClose: () => void;
-  onRetry: () => void;
-}
+import { FallbackNotificationProps } from '@/lib/interfaces/terminal';
 
 export default function FallbackNotification({
   show,

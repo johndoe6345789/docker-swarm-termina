@@ -9,14 +9,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { Close, Terminal as TerminalIcon, Code, Warning } from '@mui/icons-material';
-
-interface TerminalHeaderProps {
-  containerName: string;
-  mode: 'simple' | 'interactive';
-  interactiveFailed: boolean;
-  onModeChange: (event: React.MouseEvent<HTMLElement>, newMode: 'simple' | 'interactive' | null) => void;
-  onClose: () => void;
-}
+import { TerminalHeaderProps } from '@/lib/interfaces/terminal';
 
 export default function TerminalHeader({
   containerName,

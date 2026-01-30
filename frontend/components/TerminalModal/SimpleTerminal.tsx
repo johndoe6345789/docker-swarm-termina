@@ -1,20 +1,7 @@
 import React from 'react';
-import { OutputLine } from '@/lib/hooks/useSimpleTerminal';
+import { SimpleTerminalProps } from '@/lib/interfaces/terminal';
 import TerminalOutput from './TerminalOutput';
 import CommandInput from './CommandInput';
-
-interface SimpleTerminalProps {
-  output: OutputLine[];
-  command: string;
-  workdir: string;
-  isExecuting: boolean;
-  isMobile: boolean;
-  containerName: string;
-  outputRef: React.RefObject<HTMLDivElement | null>;
-  onCommandChange: (value: string) => void;
-  onExecute: () => void;
-  onKeyPress: (e: React.KeyboardEvent) => void;
-}
 
 export default function SimpleTerminal({
   output,
