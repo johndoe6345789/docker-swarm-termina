@@ -33,6 +33,7 @@ class ApiClient {
       localStorage.setItem('auth_token', token);
     } else {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_username');
     }
   }
 
@@ -41,6 +42,23 @@ class ApiClient {
       this.token = localStorage.getItem('auth_token');
     }
     return this.token;
+  }
+
+  getUsername(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_username');
+    }
+    return null;
+  }
+
+  setUsername(username: string | null) {
+    if (typeof window !== 'undefined') {
+      if (username) {
+        localStorage.setItem('auth_username', username);
+      } else {
+        localStorage.removeItem('auth_username');
+      }
+    }
   }
 
   async login(username: string, password: string): Promise<AuthResponse> {
@@ -55,6 +73,7 @@ class ApiClient {
     const data = await response.json();
     if (data.success && data.token) {
       this.setToken(data.token);
+      this.setUsername(data.username || username);
     }
     return data;
   }

@@ -22,14 +22,15 @@ export const initAuth = createAsyncThunk('auth/init', async () => {
     // Validate token by fetching containers
     try {
       await apiClient.getContainers();
-      return { isAuthenticated: true };
+      const username = apiClient.getUsername();
+      return { isAuthenticated: true, username };
     } catch (error) {
       // Token is invalid, clear it
       apiClient.setToken(null);
-      return { isAuthenticated: false };
+      return { isAuthenticated: false, username: null };
     }
   }
-  return { isAuthenticated: false };
+  return { isAuthenticated: false, username: null };
 });
 
 export const login = createAsyncThunk(
@@ -73,10 +74,12 @@ const authSlice = createSlice({
       .addCase(initAuth.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = action.payload.isAuthenticated;
+        state.username = action.payload.username;
       })
       .addCase(initAuth.rejected, (state) => {
         state.loading = false;
         state.isAuthenticated = false;
+        state.username = null;
       })
       // Login
       .addCase(login.pending, (state) => {
