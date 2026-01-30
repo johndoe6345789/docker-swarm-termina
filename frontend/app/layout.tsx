@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
-import { AuthProvider } from "@/lib/auth";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Container Shell - Docker Swarm Terminal",
@@ -26,9 +26,9 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <AuthProvider>
+          <Providers>
             {children}
-          </AuthProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

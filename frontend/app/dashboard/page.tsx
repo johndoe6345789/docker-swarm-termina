@@ -16,13 +16,15 @@ import {
   useTheme,
 } from '@mui/material';
 import { Logout, Refresh, Inventory2 } from '@mui/icons-material';
-import { useAuth } from '@/lib/auth';
+import { useAppDispatch, useAppSelector } from '@/lib/store/hooks';
+import { logout as logoutAction } from '@/lib/store/authSlice';
 import { apiClient, Container as ContainerType } from '@/lib/api';
 import ContainerCard from '@/components/ContainerCard';
 import TerminalModal from '@/components/TerminalModal';
 
 export default function Dashboard() {
-  const { isAuthenticated, loading: authLoading, logout } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -47,9 +49,7 @@ export default function Dashboard() {
       setContainers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch containers');
-      if (err instanceof Error && err.message === 'Session expired') {
-        router.push('/');
-      }
+      // Auth errors are now handled globally by authErrorHandler
     } finally {
       setIsRefreshing(false);
       setIsLoading(false);
@@ -75,7 +75,7 @@ export default function Dashboard() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    await dispatch(logoutAction());
     router.push('/');
   };
 

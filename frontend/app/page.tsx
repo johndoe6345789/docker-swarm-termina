@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { useAppSelector } from '@/lib/store/hooks';
 import LoginForm from '@/components/LoginForm';
 
 export default function Home() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
   const router = useRouter();
 
   useEffect(() => {

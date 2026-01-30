@@ -11,27 +11,27 @@ import {
   Alert,
 } from '@mui/material';
 import { LockOpen } from '@mui/icons-material';
-import { useAuth } from '@/lib/auth';
+import { useAppDispatch, useAppSelector } from '@/lib/store/hooks';
+import { login, clearError } from '@/lib/store/authSlice';
 import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
-  const { login } = useAuth();
+  const dispatch = useAppDispatch();
+  const { error, loading } = useAppSelector((state) => state.auth);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    dispatch(clearError());
 
-    const success = await login(username, password);
+    const result = await dispatch(login({ username, password }));
 
-    if (success) {
+    if (login.fulfilled.match(result)) {
       router.push('/dashboard');
     } else {
-      setError('Invalid credentials');
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
     }
@@ -121,8 +121,9 @@ export default function LoginForm() {
               color="secondary"
               size="large"
               sx={{ mb: 2 }}
+              disabled={loading}
             >
-              Access Dashboard
+              {loading ? 'Logging in...' : 'Access Dashboard'}
             </Button>
 
             <Typography
