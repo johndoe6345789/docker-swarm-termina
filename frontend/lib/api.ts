@@ -118,6 +118,7 @@ class ApiClient {
       if (response.status === 401) {
         this.setToken(null);
         triggerAuthError();
+        throw new Error('Session expired');
       }
       throw new Error('Failed to execute command');
     }
