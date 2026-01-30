@@ -340,6 +340,103 @@ def exec_container(container_id):
         logger.error(f"Error executing command: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/containers/<container_id>/start', methods=['POST'])
+def start_container(container_id):
+    """Start a stopped container"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    token = auth_header.split(' ')[1]
+    if token not in sessions:
+        return jsonify({'error': 'Invalid session'}), 401
+
+    client = get_docker_client()
+    if not client:
+        return jsonify({'error': 'Cannot connect to Docker'}), 500
+
+    try:
+        container = client.containers.get(container_id)
+        container.start()
+        logger.info(f"Started container {container_id}")
+        return jsonify({'success': True, 'message': f'Container {container_id} started'})
+    except Exception as e:
+        logger.error(f"Error starting container: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/containers/<container_id>/stop', methods=['POST'])
+def stop_container(container_id):
+    """Stop a running container"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    token = auth_header.split(' ')[1]
+    if token not in sessions:
+        return jsonify({'error': 'Invalid session'}), 401
+
+    client = get_docker_client()
+    if not client:
+        return jsonify({'error': 'Cannot connect to Docker'}), 500
+
+    try:
+        container = client.containers.get(container_id)
+        container.stop()
+        logger.info(f"Stopped container {container_id}")
+        return jsonify({'success': True, 'message': f'Container {container_id} stopped'})
+    except Exception as e:
+        logger.error(f"Error stopping container: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/containers/<container_id>/restart', methods=['POST'])
+def restart_container(container_id):
+    """Restart a container"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    token = auth_header.split(' ')[1]
+    if token not in sessions:
+        return jsonify({'error': 'Invalid session'}), 401
+
+    client = get_docker_client()
+    if not client:
+        return jsonify({'error': 'Cannot connect to Docker'}), 500
+
+    try:
+        container = client.containers.get(container_id)
+        container.restart()
+        logger.info(f"Restarted container {container_id}")
+        return jsonify({'success': True, 'message': f'Container {container_id} restarted'})
+    except Exception as e:
+        logger.error(f"Error restarting container: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/containers/<container_id>', methods=['DELETE'])
+def remove_container(container_id):
+    """Remove a container"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    token = auth_header.split(' ')[1]
+    if token not in sessions:
+        return jsonify({'error': 'Invalid session'}), 401
+
+    client = get_docker_client()
+    if not client:
+        return jsonify({'error': 'Cannot connect to Docker'}), 500
+
+    try:
+        container = client.containers.get(container_id)
+        # Force remove (including if running)
+        container.remove(force=True)
+        logger.info(f"Removed container {container_id}")
+        return jsonify({'success': True, 'message': f'Container {container_id} removed'})
+    except Exception as e:
+        logger.error(f"Error removing container: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint"""

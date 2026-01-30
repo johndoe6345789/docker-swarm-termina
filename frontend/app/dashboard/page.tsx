@@ -12,6 +12,8 @@ import {
   Toolbar,
   IconButton,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Logout, Refresh, Inventory2 } from '@mui/icons-material';
 import { useAuth } from '@/lib/auth';
@@ -22,6 +24,8 @@ import TerminalModal from '@/components/TerminalModal';
 export default function Dashboard() {
   const { isAuthenticated, loading: authLoading, logout } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [containers, setContainers] = useState<ContainerType[]>([]);
   const [selectedContainer, setSelectedContainer] = useState<ContainerType | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -123,39 +127,66 @@ export default function Dashboard() {
             <Box>
               <Typography
                 variant="h1"
-                sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '1.5rem' }}
+                sx={{
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: { xs: '1.1rem', sm: '1.5rem' }
+                }}
               >
                 Container Shell
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {containers.length} active {containers.length === 1 ? 'container' : 'containers'}
-              </Typography>
+              {!isMobile && (
+                <Typography variant="caption" color="text.secondary">
+                  {containers.length} active {containers.length === 1 ? 'container' : 'containers'}
+                </Typography>
+              )}
             </Box>
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              startIcon={isRefreshing ? <CircularProgress size={16} /> : <Refresh />}
-            >
-              Refresh
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleLogout}
-              startIcon={<Logout />}
-            >
-              Logout
-            </Button>
+            {isMobile ? (
+              <>
+                <IconButton
+                  color="inherit"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  size="small"
+                >
+                  {isRefreshing ? <CircularProgress size={20} /> : <Refresh />}
+                </IconButton>
+                <IconButton
+                  color="inherit"
+                  onClick={handleLogout}
+                  size="small"
+                >
+                  <Logout />
+                </IconButton>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  startIcon={isRefreshing ? <CircularProgress size={16} /> : <Refresh />}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleLogout}
+                  startIcon={<Logout />}
+                >
+                  Logout
+                </Button>
+              </>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {error && (
           <Box sx={{ mb: 2, p: 2, bgcolor: 'error.dark', borderRadius: 1 }}>
             <Typography color="error.contrastText">{error}</Typography>
@@ -202,6 +233,7 @@ export default function Dashboard() {
                 <ContainerCard
                   container={container}
                   onOpenShell={() => handleOpenShell(container)}
+                  onContainerUpdate={fetchContainers}
                 />
               </Grid>
             ))}

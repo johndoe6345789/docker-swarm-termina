@@ -12,6 +12,8 @@ import {
   Typography,
   IconButton,
   Paper,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Close, Send } from '@mui/icons-material';
 import { apiClient } from '@/lib/api';
@@ -35,6 +37,8 @@ export default function TerminalModal({
   containerName,
   containerId,
 }: TerminalModalProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -146,10 +150,11 @@ export default function TerminalModal({
       onClose={handleClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          minHeight: '500px',
-          maxHeight: '80vh',
+          minHeight: isMobile ? '100vh' : '500px',
+          maxHeight: isMobile ? '100vh' : '80vh',
         },
       }}
     >
@@ -159,9 +164,15 @@ export default function TerminalModal({
           justifyContent: 'space-between',
           alignItems: 'center',
           pb: 2,
+          pt: { xs: 1, sm: 2 },
+          px: { xs: 2, sm: 3 },
         }}
       >
-        <Typography variant="h2" component="div">
+        <Typography
+          variant="h2"
+          component="div"
+          sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}
+        >
           Terminal - {containerName}
         </Typography>
         <IconButton onClick={handleClose} size="small">
@@ -177,16 +188,16 @@ export default function TerminalModal({
             backgroundColor: '#300A24',
             color: '#F8F8F2',
             fontFamily: '"Ubuntu Mono", "Courier New", monospace',
-            fontSize: '14px',
-            padding: 2,
-            minHeight: '400px',
-            maxHeight: '500px',
+            fontSize: { xs: '12px', sm: '14px' },
+            padding: { xs: 1.5, sm: 2 },
+            minHeight: { xs: '300px', sm: '400px' },
+            maxHeight: { xs: '400px', sm: '500px' },
             overflowY: 'auto',
             mb: 2,
             border: '1px solid #5E2750',
             borderRadius: '4px',
             '&::-webkit-scrollbar': {
-              width: '10px',
+              width: { xs: '6px', sm: '10px' },
             },
             '&::-webkit-scrollbar-track': {
               background: '#2C0922',
@@ -229,64 +240,91 @@ export default function TerminalModal({
           )}
         </Paper>
 
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: 1,
+          alignItems: isMobile ? 'stretch' : 'center'
+        }}>
           <Typography sx={{
             fontFamily: '"Ubuntu Mono", monospace',
-            fontSize: '14px',
+            fontSize: { xs: '12px', sm: '14px' },
             color: '#8BE9FD',
             fontWeight: 'bold',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            alignSelf: isMobile ? 'flex-start' : 'center'
           }}>
             {formatPrompt(workdir)}
           </Typography>
-          <TextField
-            fullWidth
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="ls -la"
-            disabled={isExecuting}
-            variant="outlined"
-            size="small"
-            autoFocus
-            sx={{
-              fontFamily: '"Ubuntu Mono", monospace',
-              '& input': {
+          <Box sx={{ display: 'flex', gap: 1, flex: 1 }}>
+            <TextField
+              fullWidth
+              value={command}
+              onChange={(e) => setCommand(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="ls -la"
+              disabled={isExecuting}
+              variant="outlined"
+              size="small"
+              autoFocus
+              sx={{
                 fontFamily: '"Ubuntu Mono", monospace',
-                fontSize: '14px',
-                padding: '8px 12px',
-                color: '#F8F8F2',
-              },
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: '#1E1E1E',
-                '& fieldset': {
-                  borderColor: '#5E2750',
+                '& input': {
+                  fontFamily: '"Ubuntu Mono", monospace',
+                  fontSize: { xs: '12px', sm: '14px' },
+                  padding: { xs: '6px 10px', sm: '8px 12px' },
+                  color: '#F8F8F2',
                 },
-                '&:hover fieldset': {
-                  borderColor: '#772953',
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#1E1E1E',
+                  '& fieldset': {
+                    borderColor: '#5E2750',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#772953',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#8BE9FD',
+                  },
                 },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#8BE9FD',
-                },
-              },
-            }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleExecute}
-            disabled={isExecuting || !command.trim()}
-            startIcon={<Send />}
-            sx={{
-              backgroundColor: '#5E2750',
-              '&:hover': {
-                backgroundColor: '#772953',
-              },
-              textTransform: 'none',
-              fontWeight: 'bold',
-            }}
-          >
-            Run
-          </Button>
+              }}
+            />
+            {isMobile ? (
+              <IconButton
+                onClick={handleExecute}
+                disabled={isExecuting || !command.trim()}
+                sx={{
+                  backgroundColor: '#5E2750',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#772953',
+                  },
+                  '&:disabled': {
+                    backgroundColor: '#3a1a2f',
+                  },
+                }}
+              >
+                <Send />
+              </IconButton>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleExecute}
+                disabled={isExecuting || !command.trim()}
+                startIcon={<Send />}
+                sx={{
+                  backgroundColor: '#5E2750',
+                  '&:hover': {
+                    backgroundColor: '#772953',
+                  },
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                }}
+              >
+                Run
+              </Button>
+            )}
+          </Box>
         </Box>
       </DialogContent>
 
