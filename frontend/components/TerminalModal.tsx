@@ -17,8 +17,10 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Tooltip,
+  Alert,
+  Snackbar,
 } from '@mui/material';
-import { Close, Send, Terminal as TerminalIcon, Code } from '@mui/icons-material';
+import { Close, Send, Terminal as TerminalIcon, Code, Warning } from '@mui/icons-material';
 import { apiClient, API_BASE_URL } from '@/lib/api';
 import { io, Socket } from 'socket.io-client';
 import { Terminal } from '@xterm/xterm';
@@ -50,6 +52,11 @@ export default function TerminalModal({
   // Mode selection: 'simple' or 'interactive'
   const [mode, setMode] = useState<'simple' | 'interactive'>('interactive');
 
+  // Fallback tracking
+  const [interactiveFailed, setInteractiveFailed] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState('');
+  const [showFallbackNotification, setShowFallbackNotification] = useState(false);
+
   // Simple mode state
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
@@ -62,6 +69,7 @@ export default function TerminalModal({
   const xtermRef = useRef<Terminal | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const connectionAttempts = useRef(0);
 
   // Auto-scroll to bottom when output changes (simple mode)
   useEffect(() => {
@@ -69,6 +77,25 @@ export default function TerminalModal({
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [output]);
+
+  // Function to fallback to simple mode
+  const fallbackToSimpleMode = (reason: string) => {
+    console.warn('Falling back to simple mode:', reason);
+    setInteractiveFailed(true);
+    setFallbackReason(reason);
+    setMode('simple');
+    setShowFallbackNotification(true);
+
+    // Cleanup interactive terminal if it exists
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    if (xtermRef.current) {
+      xtermRef.current.dispose();
+      xtermRef.current = null;
+    }
+  };
 
   // Initialize interactive terminal
   useEffect(() => {
@@ -128,6 +155,8 @@ export default function TerminalModal({
 
     socket.on('connect', () => {
       console.log('WebSocket connected');
+      connectionAttempts.current = 0; // Reset on successful connection
+
       // Start terminal session
       const token = apiClient.getToken();
       const termSize = fitAddon.proposeDimensions();
@@ -137,6 +166,16 @@ export default function TerminalModal({
         cols: termSize?.cols || 80,
         rows: termSize?.rows || 24,
       });
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      connectionAttempts.current++;
+
+      // After 2 failed attempts, fallback to simple mode
+      if (connectionAttempts.current >= 2) {
+        fallbackToSimpleMode('Failed to establish WebSocket connection. Network or server may be unavailable.');
+      }
     });
 
     socket.on('started', () => {
@@ -149,15 +188,29 @@ export default function TerminalModal({
     });
 
     socket.on('error', (data: { error: string }) => {
+      console.error('Terminal error:', data.error);
       term.write(`\r\n\x1b[31mError: ${data.error}\x1b[0m\r\n`);
+
+      // Check for critical errors that should trigger fallback
+      const criticalErrors = ['Unauthorized', 'Cannot connect to Docker', 'Invalid session'];
+      if (criticalErrors.some(err => data.error.includes(err))) {
+        setTimeout(() => {
+          fallbackToSimpleMode(`Interactive terminal failed: ${data.error}`);
+        }, 2000); // Give user time to see the error
+      }
     });
 
     socket.on('exit', () => {
       term.write('\r\n\r\n*** Terminal Session Ended ***\r\n');
     });
 
-    socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
+    socket.on('disconnect', (reason) => {
+      console.log('WebSocket disconnected:', reason);
+
+      // If disconnect was unexpected and not user-initiated
+      if (reason === 'transport error' || reason === 'transport close') {
+        fallbackToSimpleMode('WebSocket connection lost unexpectedly.');
+      }
     });
 
     // Handle terminal input
@@ -267,8 +320,22 @@ export default function TerminalModal({
     newMode: 'simple' | 'interactive' | null,
   ) => {
     if (newMode !== null) {
+      // If switching to interactive mode after a failure, reset the failure state
+      if (newMode === 'interactive' && interactiveFailed) {
+        setInteractiveFailed(false);
+        setFallbackReason('');
+        connectionAttempts.current = 0;
+      }
       setMode(newMode);
     }
+  };
+
+  const handleRetryInteractive = () => {
+    setInteractiveFailed(false);
+    setFallbackReason('');
+    setShowFallbackNotification(false);
+    connectionAttempts.current = 0;
+    setMode('interactive');
   };
 
   const formatPrompt = (workdir: string) => {
@@ -352,9 +419,27 @@ export default function TerminalModal({
             size="small"
             sx={{ display: 'flex' }}
           >
-            <Tooltip title="Interactive mode with full terminal support (sudo, nano, vim)">
-              <ToggleButton value="interactive" sx={{ flex: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                <TerminalIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+            <Tooltip title={interactiveFailed ? "Interactive mode failed - click to retry" : "Interactive mode with full terminal support (sudo, nano, vim)"}>
+              <ToggleButton
+                value="interactive"
+                sx={{
+                  flex: 1,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  ...(interactiveFailed && {
+                    borderColor: '#f59e0b',
+                    color: '#f59e0b',
+                    '&:hover': {
+                      borderColor: '#d97706',
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    },
+                  }),
+                }}
+              >
+                {interactiveFailed ? (
+                  <Warning sx={{ mr: 0.5, fontSize: '1rem' }} />
+                ) : (
+                  <TerminalIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                )}
                 Interactive
               </ToggleButton>
             </Tooltip>
@@ -547,6 +632,33 @@ export default function TerminalModal({
           Close
         </Button>
       </DialogActions>
+
+      {/* Fallback notification */}
+      <Snackbar
+        open={showFallbackNotification}
+        autoHideDuration={10000}
+        onClose={() => setShowFallbackNotification(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          severity="warning"
+          icon={<Warning />}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetryInteractive}>
+              Retry
+            </Button>
+          }
+          onClose={() => setShowFallbackNotification(false)}
+          sx={{ width: '100%', maxWidth: '600px' }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            Switched to Simple Mode
+          </Typography>
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {fallbackReason}
+          </Typography>
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 }
