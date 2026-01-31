@@ -86,6 +86,9 @@ export function useInteractiveTerminal({
         const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
         socket = io(`${wsUrl}/terminal`, {
           transports: ['websocket', 'polling'],
+          reconnectionDelayMax: 10000,
+          timeout: 60000,
+          forceNew: true,
         });
 
         socketRef.current = socket;
