@@ -28,7 +28,7 @@ socketio = SocketIO(
     ping_timeout=60,
     ping_interval=25,
     logger=True,
-    engineio_logger=False
+    engineio_logger=True
 )
 
 # Simple in-memory session storage (in production, use proper session management)
