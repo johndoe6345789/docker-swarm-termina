@@ -377,15 +377,24 @@ class TestWebSocketCoverage:
     def test_input_with_direct_socket_fallback(self, mock_get_client, socketio_client, auth_token):
         """Test that input works with direct socket (no _sock attribute)"""
         import app
+        import threading
 
         mock_client = MagicMock()
         mock_container = MagicMock()
         mock_exec_instance = MagicMock()
 
+        # Create an event to control when the socket returns empty
+        stop_event = threading.Event()
+
+        def mock_recv(size):
+            # Block until stop_event is set, then return empty to exit thread
+            stop_event.wait(timeout=1.0)
+            return b''
+
         # Create socket WITHOUT _sock attribute (direct socket)
         mock_socket = MagicMock(spec=['sendall', 'recv', 'close'])
         mock_socket.sendall = MagicMock()
-        mock_socket.recv = MagicMock(return_value=b'')
+        mock_socket.recv = MagicMock(side_effect=mock_recv)
         mock_socket.close = MagicMock()
 
         # Ensure it has NO _sock attribute
@@ -415,3 +424,7 @@ class TestWebSocketCoverage:
 
         # Verify sendall was called on the socket itself (not _sock)
         mock_socket.sendall.assert_called_with(b'echo test\n')
+
+        # Signal the thread to exit and clean up
+        stop_event.set()
+        time.sleep(0.1)

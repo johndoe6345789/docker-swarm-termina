@@ -57,7 +57,7 @@ class TestContainerSocketBehavior:
         if not is_simulated:
             # Only test actual output with real Docker
             time.sleep(0.2)
-            output = sock.recv(4096)
+            output = sock._sock.recv(4096)
 
             # Verify we got output without errors
             assert output is not None

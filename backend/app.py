@@ -514,13 +514,16 @@ def handle_start_terminal(data):
             'container_id': container_id
         }
 
+        # Capture request.sid before starting thread to avoid context issues
+        sid = request.sid
+
         # Start a thread to read from the container and send to client
         def read_output():
             sock = exec_instance.output
             try:
                 while True:
                     # Check if socket is still connected
-                    if request.sid not in active_terminals:
+                    if sid not in active_terminals:
                         break
 
                     try:
@@ -536,20 +539,20 @@ def handle_start_terminal(data):
                             decoded_data = data.decode('latin-1', errors='replace')
 
                         socketio.emit('output', {'data': decoded_data},
-                                    namespace='/terminal', room=request.sid)
+                                    namespace='/terminal', room=sid)
                     except Exception as e:
                         logger.error(f"Error reading from container: {e}")
                         break
             finally:
                 # Clean up
-                if request.sid in active_terminals:
-                    del active_terminals[request.sid]
+                if sid in active_terminals:
+                    del active_terminals[sid]
                 try:
                     sock.close()
                 except:
                     pass
                 socketio.emit('exit', {'code': 0},
-                            namespace='/terminal', room=request.sid)
+                            namespace='/terminal', room=sid)
 
         # Start the output reader thread
         output_thread = threading.Thread(target=read_output, daemon=True)
