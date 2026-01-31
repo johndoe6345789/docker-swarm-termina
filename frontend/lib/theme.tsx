@@ -85,8 +85,17 @@ const theme = createTheme({
           borderRadius: '6px',
           padding: '8px 16px',
           transition: 'all 0.1s ease',
+          '&:hover': {
+            boxShadow: '0 0 8px rgba(56, 178, 172, 0.3)',
+          },
           '&:active': {
             transform: 'scale(0.98)',
+          },
+          '&.Mui-disabled': {
+            opacity: 0.5,
+            backgroundColor: 'rgba(74, 85, 104, 0.3)',
+            borderColor: 'rgba(74, 85, 104, 0.5)',
+            color: 'rgba(247, 250, 252, 0.5)',
           },
         },
       },
