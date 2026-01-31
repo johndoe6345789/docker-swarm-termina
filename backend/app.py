@@ -575,7 +575,12 @@ def handle_input(data):
 
         # Send input to the container
         sock = exec_instance.output
-        sock.sendall(input_data.encode('utf-8'))
+        # Access the underlying socket for sendall method
+        if hasattr(sock, '_sock'):
+            sock._sock.sendall(input_data.encode('utf-8'))
+        else:
+            # Fallback for direct socket objects
+            sock.sendall(input_data.encode('utf-8'))
 
     except Exception as e:
         logger.error(f"Error sending input: {e}", exc_info=True)
