@@ -3,6 +3,9 @@ from unittest.mock import MagicMock, patch, Mock
 from flask_socketio import SocketIOTestClient
 
 
+pytestmark = pytest.mark.unit
+
+
 class TestWebSocketHandlers:
     """Test WebSocket terminal handlers"""
 
