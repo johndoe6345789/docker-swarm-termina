@@ -575,7 +575,7 @@ def handle_input(data):
 
         # Send input to the container
         sock = exec_instance.output
-        sock.send(input_data.encode('utf-8'))
+        sock.sendall(input_data.encode('utf-8'))
 
     except Exception as e:
         logger.error(f"Error sending input: {e}", exc_info=True)
