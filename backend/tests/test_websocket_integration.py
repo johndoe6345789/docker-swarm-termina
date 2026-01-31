@@ -1,67 +1,49 @@
 """
-Real integration tests that require an actual Docker environment.
-These tests will be skipped if Docker is not available.
-
-For tests that work without Docker, see test_websocket_simulated.py
+Integration tests that work with both real Docker and simulated containers.
+These tests use simulated containers when Docker is not available.
 """
 import pytest
 import time
 
 
-def docker_available():
-    """Check if Docker is available"""
-    try:
-        import docker
-        client = docker.from_env()
-        client.ping()
-        return True
-    except Exception:
-        return False
+pytestmark = pytest.mark.unit
 
 
-# Mark all tests in this module as integration tests
-# Skip if Docker is not available
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(not docker_available(), reason="Docker is not available")
-]
+class TestContainerSocketBehavior:
+    """Test socket behavior with containers (real or simulated)"""
 
+    def test_terminal_sendall_with_container(self, test_container_or_simulated):
+        """Test that sendall works with exec socket (real or simulated)"""
+        # Check if this is a real Docker container or simulated
+        is_simulated = (hasattr(test_container_or_simulated, '__class__') and
+                       test_container_or_simulated.__class__.__name__ == 'SimulatedContainer')
 
-class TestWebSocketRealDocker:
-    """Integration tests for WebSocket terminal with real Docker containers"""
+        if is_simulated:
+            # Test with simulated container
+            exec_instance = test_container_or_simulated.exec_run(['/bin/sh'], socket=True)
+            sock = exec_instance.output
+        else:
+            # Test with real Docker container
+            import docker
+            client = docker.from_env()
+            container = client.containers.get(test_container_or_simulated.id)
 
-    def test_terminal_sendall_with_real_docker_socket(self, test_container_or_simulated):
-        """Test that sendall works with real Docker exec socket"""
-        # Skip if we got a simulated container
-        if hasattr(test_container_or_simulated, '__class__') and \
-           test_container_or_simulated.__class__.__name__ == 'SimulatedContainer':
-            pytest.skip("Real Docker not available, got simulated container")
-
-        import docker
-
-        # Get a real Docker client
-        client = docker.from_env()
-        container = client.containers.get(test_container_or_simulated.id)
-
-        # Create an exec instance with socket=True (like the actual code)
-        exec_instance = container.exec_run(
-            ['/bin/sh'],
-            stdin=True,
-            stdout=True,
-            stderr=True,
-            tty=True,
-            socket=True,
-            environment={
-                'TERM': 'xterm-256color',
-                'LANG': 'C.UTF-8'
-            }
-        )
-
-        # Get the socket
-        sock = exec_instance.output
+            exec_instance = container.exec_run(
+                ['/bin/sh'],
+                stdin=True,
+                stdout=True,
+                stderr=True,
+                tty=True,
+                socket=True,
+                environment={
+                    'TERM': 'xterm-256color',
+                    'LANG': 'C.UTF-8'
+                }
+            )
+            sock = exec_instance.output
 
         # Verify the socket has the _sock attribute (this is what we fixed)
-        assert hasattr(sock, '_sock'), "Docker exec socket should have _sock attribute"
+        assert hasattr(sock, '_sock'), "Socket should have _sock attribute"
 
         # Test the sendall logic (this is what was failing before)
         test_input = 'echo "testing sendall"\n'
@@ -72,47 +54,53 @@ class TestWebSocketRealDocker:
         else:
             sock.sendall(test_input.encode('utf-8'))
 
-        # Read response
-        time.sleep(0.2)
-        output = sock.recv(4096)
+        if not is_simulated:
+            # Only test actual output with real Docker
+            time.sleep(0.2)
+            output = sock.recv(4096)
+
+            # Verify we got output without errors
+            assert output is not None
+            assert len(output) > 0
+            output_str = output.decode('utf-8', errors='replace')
+            assert 'testing sendall' in output_str
 
         # Clean up
         sock.close()
 
-        # Verify we got output without errors
-        assert output is not None
-        assert len(output) > 0
-        # The output should contain our echo
-        output_str = output.decode('utf-8', errors='replace')
-        assert 'testing sendall' in output_str
+        # Verify sendall was called (works for both real and simulated)
+        if is_simulated:
+            sock._sock.sendall.assert_called()
 
-    def test_docker_socket_structure(self, test_container_or_simulated):
-        """Verify the actual structure of Docker's socket wrapper"""
-        # Skip if we got a simulated container
-        if hasattr(test_container_or_simulated, '__class__') and \
-           test_container_or_simulated.__class__.__name__ == 'SimulatedContainer':
-            pytest.skip("Real Docker not available, got simulated container")
+    def test_socket_structure(self, test_container_or_simulated):
+        """Verify the structure of socket wrapper (real or simulated)"""
+        is_simulated = (hasattr(test_container_or_simulated, '__class__') and
+                       test_container_or_simulated.__class__.__name__ == 'SimulatedContainer')
 
-        import docker
+        if is_simulated:
+            # Test with simulated container
+            exec_instance = test_container_or_simulated.exec_run(['/bin/sh'], socket=True)
+            sock = exec_instance.output
+        else:
+            # Test with real Docker
+            import docker
+            client = docker.from_env()
+            container = client.containers.get(test_container_or_simulated.id)
 
-        client = docker.from_env()
-        container = client.containers.get(test_container_or_simulated.id)
+            exec_instance = container.exec_run(
+                ['/bin/sh'],
+                stdin=True,
+                stdout=True,
+                tty=True,
+                socket=True
+            )
+            sock = exec_instance.output
 
-        # Create exec with socket=True
-        exec_instance = container.exec_run(
-            ['/bin/sh'],
-            stdin=True,
-            stdout=True,
-            tty=True,
-            socket=True
-        )
-
-        sock = exec_instance.output
-
-        # Verify structure
+        # Verify structure (works for both real and simulated)
         assert hasattr(sock, '_sock'), "Should have _sock attribute"
         assert hasattr(sock._sock, 'sendall'), "Underlying socket should have sendall"
         assert hasattr(sock._sock, 'recv'), "Underlying socket should have recv"
+        assert hasattr(sock._sock, 'close'), "Underlying socket should have close"
 
         # Clean up
         sock.close()
