@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from app import format_uptime
 
 
@@ -10,7 +10,7 @@ class TestUtilityFunctions:
         """Test uptime formatting for days"""
         # Create a timestamp 2 days and 3 hours ago
         now = datetime.now(timezone.utc)
-        created_at = now.replace(day=now.day-2, hour=now.hour-3)
+        created_at = now - timedelta(days=2, hours=3)
         created_str = created_at.isoformat().replace('+00:00', 'Z')
 
         result = format_uptime(created_str)
@@ -21,7 +21,7 @@ class TestUtilityFunctions:
         """Test uptime formatting for hours"""
         # Create a timestamp 3 hours and 15 minutes ago
         now = datetime.now(timezone.utc)
-        created_at = now.replace(hour=now.hour-3, minute=now.minute-15)
+        created_at = now - timedelta(hours=3, minutes=15)
         created_str = created_at.isoformat().replace('+00:00', 'Z')
 
         result = format_uptime(created_str)
@@ -33,7 +33,7 @@ class TestUtilityFunctions:
         """Test uptime formatting for minutes"""
         # Create a timestamp 30 minutes ago
         now = datetime.now(timezone.utc)
-        created_at = now.replace(minute=now.minute-30)
+        created_at = now - timedelta(minutes=30)
         created_str = created_at.isoformat().replace('+00:00', 'Z')
 
         result = format_uptime(created_str)
