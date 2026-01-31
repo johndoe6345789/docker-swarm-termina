@@ -46,6 +46,13 @@ ENV/
 *.egg-info/
 .pytest_cache/
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache
+
 # Next.js
 .next/
 out/
