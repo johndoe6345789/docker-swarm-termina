@@ -52,7 +52,7 @@ COPY . .
 RUN npm run build
 
 # Run e2e tests (non-blocking in CI as requires running backend)
-RUN npm run test:e2e || echo "E2E tests skipped (requires running services)" && touch /app/.e2e-tests-passed
+RUN (npm run test:e2e || echo "E2E tests skipped (requires running services)") && touch /app/.e2e-tests-passed
 
 # Production stage
 FROM node:20-slim AS production
