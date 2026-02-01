@@ -2,6 +2,24 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import RootLayout, { metadata } from '../layout';
 
+// Suppress console.error for DOM nesting warnings in tests
+// (html cannot be child of div - expected when testing Next.js RootLayout)
+const originalConsoleError = console.error;
+beforeAll(() => {
+  console.error = jest.fn((...args) => {
+    const message = args.map(arg => String(arg)).join(' ');
+    // Suppress DOM nesting warnings that occur when testing RootLayout
+    if (message.includes('cannot be a child of') || message.includes('hydration error')) {
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  });
+});
+
+afterAll(() => {
+  console.error = originalConsoleError;
+});
+
 // Mock the ThemeProvider and Providers
 jest.mock('@/lib/theme', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="theme-provider">{children}</div>,

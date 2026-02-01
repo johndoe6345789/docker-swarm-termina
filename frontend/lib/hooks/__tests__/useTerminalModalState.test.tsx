@@ -1,6 +1,17 @@
 import { renderHook, act } from '@testing-library/react';
 import { useTerminalModalState } from '../useTerminalModalState';
 
+// Suppress console.warn during tests (fallback mode warnings are expected)
+const originalConsoleWarn = console.warn;
+
+beforeAll(() => {
+  console.warn = jest.fn();
+});
+
+afterAll(() => {
+  console.warn = originalConsoleWarn;
+});
+
 // Mock MUI hooks
 jest.mock('@mui/material', () => ({
   ...jest.requireActual('@mui/material'),
