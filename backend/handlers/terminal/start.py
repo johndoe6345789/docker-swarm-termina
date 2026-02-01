@@ -1,4 +1,5 @@
 """Terminal WebSocket start handler."""
+# pylint: disable=duplicate-code  # Auth/client setup pattern is intentional
 from flask import request
 from flask_socketio import emit, disconnect
 from config import logger, sessions, active_terminals

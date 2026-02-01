@@ -4,9 +4,8 @@ from config import logger, session_workdirs
 from utils.auth import check_auth
 from utils.docker_client import get_docker_client
 from utils.exec_helpers import (
-    build_bash_command,
-    build_sh_command,
-    execute_in_container,
+    get_session_workdir,
+    execute_command_with_fallback,
     decode_output,
     extract_workdir
 )
@@ -29,28 +28,23 @@ def exec_container(container_id):
         return jsonify({'error': 'Cannot connect to Docker'}), 500
 
     try:
-        container = client.containers.get(container_id)
+        # Get session working directory
+        session_key, current_workdir = get_session_workdir(token, container_id, session_workdirs)
 
-        # Get or initialize session working directory
-        session_key = f"{token}_{container_id}"
-        if session_key not in session_workdirs:
-            session_workdirs[session_key] = '/'
-
-        current_workdir = session_workdirs[session_key]
-        is_cd_command = user_command.strip().startswith('cd ')
-
-        # Try bash first, fallback to sh if bash doesn't exist
-        try:
-            bash_command = build_bash_command(current_workdir, user_command, is_cd_command)
-            exec_instance = execute_in_container(container, bash_command)
-        except Exception as bash_error:  # pylint: disable=broad-exception-caught
-            logger.warning("Bash execution failed, trying sh: %s", bash_error)
-            sh_command = build_sh_command(current_workdir, user_command, is_cd_command)
-            exec_instance = execute_in_container(container, sh_command)
+        # Execute command with bash/sh fallback
+        exec_instance = execute_command_with_fallback(
+            client.containers.get(container_id),
+            current_workdir,
+            user_command,
+            user_command.strip().startswith('cd ')
+        )
 
         # Decode and extract workdir from output
-        output = decode_output(exec_instance)
-        output, new_workdir = extract_workdir(output, current_workdir, is_cd_command)
+        output, new_workdir = extract_workdir(
+            decode_output(exec_instance),
+            current_workdir,
+            user_command.strip().startswith('cd ')
+        )
 
         # Update session workdir
         session_workdirs[session_key] = new_workdir

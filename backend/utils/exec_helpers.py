@@ -1,4 +1,44 @@
 """Helper functions for container exec operations."""
+from config import logger
+
+
+def get_session_workdir(token, container_id, session_workdirs):
+    """Get or initialize session working directory.
+
+    Args:
+        token: Session token
+        container_id: Container ID
+        session_workdirs: Session workdir dictionary
+
+    Returns:
+        tuple: (session_key, current_workdir)
+    """
+    session_key = f"{token}_{container_id}"
+    if session_key not in session_workdirs:
+        session_workdirs[session_key] = '/'
+    return session_key, session_workdirs[session_key]
+
+
+def execute_command_with_fallback(container, current_workdir, user_command, is_cd_command):
+    """Execute command in container with bash/sh fallback.
+
+    Args:
+        container: Docker container object
+        current_workdir: Current working directory
+        user_command: User's command
+        is_cd_command: Whether this is a cd command
+
+    Returns:
+        Docker exec instance
+    """
+    # Try bash first
+    try:
+        bash_command = build_bash_command(current_workdir, user_command, is_cd_command)
+        return execute_in_container(container, bash_command)
+    except Exception as bash_error:  # pylint: disable=broad-exception-caught
+        logger.warning("Bash execution failed, trying sh: %s", bash_error)
+        sh_command = build_sh_command(current_workdir, user_command, is_cd_command)
+        return execute_in_container(container, sh_command)
 
 
 def build_bash_command(current_workdir, user_command, is_cd_command):
