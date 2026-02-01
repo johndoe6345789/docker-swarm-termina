@@ -28,12 +28,31 @@ When making changes to components or functionality:
 
 2. **Make your changes** ensuring they match test expectations
 
-3. **Verify tests pass** by building the Docker test image:
+3. **Verify tests pass** - You MUST verify tests before committing:
+
+   **If Docker is available:**
    ```bash
-   docker build --target test -t docker-swarm-terminal-test .
+   # Build the FULL frontend Docker image (runs unit tests + e2e tests)
+   cd frontend && docker build -t frontend-test .
    ```
 
-4. **Only commit if tests pass** - If tests fail, fix the code, don't change the tests
+   **If Docker is NOT available:**
+   ```bash
+   cd frontend
+   # Step 1: Install dependencies
+   npm ci
+
+   # Step 2: Run unit tests
+   npm test
+
+   # Step 3: Build the app (catches TypeScript/build errors)
+   npm run build
+
+   # Step 4: Read e2e test files to verify your changes match expectations
+   cat e2e/login.spec.ts  # or relevant test file
+   ```
+
+4. **Only commit if tests pass** - If tests fail, fix the code, don't change the tests unless the tests are genuinely wrong
 
 ### Common Mistakes to Avoid
 
