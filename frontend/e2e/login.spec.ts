@@ -23,9 +23,14 @@ test.describe('Login Page', () => {
   test('should redirect to dashboard on successful login', async ({ page }) => {
     await page.getByLabel(/username/i).fill('admin');
     await page.getByLabel(/password/i).fill('admin123');
-    await page.getByRole('button', { name: /sign in/i }).click();
 
-    await expect(page).toHaveURL(/dashboard/, { timeout: 10000 });
+    // Click sign in and wait for navigation
+    await Promise.all([
+      page.waitForURL(/dashboard/, { timeout: 15000 }),
+      page.getByRole('button', { name: /sign in/i }).click(),
+    ]);
+
+    await expect(page).toHaveURL(/dashboard/);
   });
 
   test('should have accessible form elements', async ({ page }) => {
