@@ -58,6 +58,14 @@ if __name__ == '__main__':
     test_client = get_docker_client()
     if test_client:
         logger.info("✓ Docker connection verified on startup")
+
+        # Check Docker Swarm status
+        from utils.diagnostics.docker_env import check_swarm_status
+        swarm_ok = check_swarm_status(test_client)
+        if swarm_ok:
+            logger.info("✓ Docker Swarm verification passed")
+        else:
+            logger.warning("⚠ Docker Swarm verification did not pass (this is OK for local development)")
     else:
         logger.error("✗ Docker connection FAILED on startup - check logs above for details")
 

@@ -86,3 +86,82 @@ def diagnose_docker_environment():  # pylint: disable=too-many-locals,too-many-s
         logger.error("Error checking user info: %s", e)
 
     logger.info("=== End Diagnosis ===")
+
+
+def check_swarm_status(client):
+    """Check if Docker is running in Swarm mode and get Swarm information.
+
+    Args:
+        client: Docker client instance
+
+    Returns:
+        bool: True if Swarm checks pass, False otherwise
+    """
+    if client is None:
+        logger.warning("Cannot check Swarm status - Docker client is None")
+        return False
+
+    logger.info("=== Docker Swarm Status Check ===")
+
+    try:
+        # Check Swarm status
+        swarm_info = client.info()
+
+        # Check if Swarm is active
+        swarm_attrs = swarm_info.get('Swarm', {})
+        node_id = swarm_attrs.get('NodeID', '')
+        local_node_state = swarm_attrs.get('LocalNodeState', 'inactive')
+
+        logger.info("Swarm LocalNodeState: %s", local_node_state)
+        logger.info("Swarm NodeID: %s", node_id if node_id else "Not in Swarm")
+
+        if local_node_state == 'active':
+            logger.info("✓ Docker is running in Swarm mode")
+
+            # Get node information
+            try:
+                nodes = client.nodes.list()
+                logger.info("Swarm has %d node(s)", len(nodes))
+
+                # Find current node
+                for node in nodes:
+                    if node.id == node_id:
+                        logger.info("Current node: %s (Role: %s, State: %s)",
+                                  node.attrs.get('Description', {}).get('Hostname', 'unknown'),
+                                  node.attrs.get('Spec', {}).get('Role', 'unknown'),
+                                  node.attrs.get('Status', {}).get('State', 'unknown'))
+                        break
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("Could not retrieve node details: %s", e)
+
+            # Check if running as part of a service
+            try:
+                import os  # pylint: disable=import-outside-toplevel,reimported
+                hostname = os.getenv('HOSTNAME', '')
+
+                if hostname:
+                    # In Swarm, container names typically follow pattern:
+                    # service-name.replica-number.task-id
+                    if '.' in hostname:
+                        logger.info("✓ Container appears to be running as a Swarm service task")
+                        logger.info("  Container hostname: %s", hostname)
+                    else:
+                        logger.info("Container hostname: %s (may not be a Swarm service)", hostname)
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("Could not check service status: %s", e)
+
+            logger.info("=== Swarm Status: OK ===")
+            return True
+        else:
+            logger.warning("⚠ Docker is NOT running in Swarm mode (state: %s)", local_node_state)
+            logger.warning("  This application is designed for Docker Swarm/CapRover deployment")
+            logger.warning("  For local development, Swarm mode is not required")
+            logger.info("=== Swarm Status: Not Active ===")
+            return False
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Error checking Swarm status: %s", e, exc_info=True)
+        logger.info("=== Swarm Status: Error ===")
+        return False
