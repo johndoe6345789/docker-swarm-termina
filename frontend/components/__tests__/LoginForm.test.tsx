@@ -43,7 +43,7 @@ describe('LoginForm', () => {
 
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /access dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it.each([
@@ -63,7 +63,7 @@ describe('LoginForm', () => {
   it('shows loading text when loading', () => {
     renderWithProvider(<LoginForm />, true);
 
-    expect(screen.getByRole('button', { name: /logging in/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /signing in/i })).toBeInTheDocument();
   });
 
   it('password input is type password', () => {
@@ -106,7 +106,7 @@ describe('LoginForm', () => {
   it('disables submit button when loading', () => {
     renderWithProvider(<LoginForm />, true);
 
-    const submitButton = screen.getByRole('button', { name: /logging in/i });
+    const submitButton = screen.getByRole('button', { name: /signing in/i });
     expect(submitButton).toBeDisabled();
   });
 
@@ -114,7 +114,7 @@ describe('LoginForm', () => {
     renderWithProvider(<LoginForm />);
 
     // The component should render successfully
-    expect(screen.getByRole('button', { name: /access dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('handles form submission with failed login', async () => {
@@ -129,7 +129,7 @@ describe('LoginForm', () => {
 
     const usernameInput = screen.getByLabelText(/username/i);
     const passwordInput = screen.getByLabelText(/password/i);
-    const submitButton = screen.getByRole('button', { name: /access dashboard/i });
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
 
     fireEvent.change(usernameInput, { target: { value: 'wronguser' } });
     fireEvent.change(passwordInput, { target: { value: 'wrongpass' } });
@@ -142,7 +142,7 @@ describe('LoginForm', () => {
 
     // The shake animation should be triggered (isShaking: true)
     // We can't directly test CSS animations, but we verify the component still renders
-    expect(screen.getByRole('button', { name: /access dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
 
     jest.useRealTimers();
   });
