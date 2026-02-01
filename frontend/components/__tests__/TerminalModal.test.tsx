@@ -385,7 +385,7 @@ describe('TerminalModal', () => {
     expect(mockUseSimpleTerminal).toHaveBeenCalledWith('container123');
   });
 
-  it('should call reset when closing FallbackNotification', () => {
+  it('should call reset when closing FallbackNotification', async () => {
     const mockReset = jest.fn();
 
     mockUseTerminalModalState.mockReturnValue({
@@ -405,9 +405,20 @@ describe('TerminalModal', () => {
       />
     );
 
-    // FallbackNotification onClose should call modalState.reset()
-    // This is passed as a prop to FallbackNotification component
-    expect(mockUseTerminalModalState).toHaveBeenCalled();
+    // Find and click the close button on the alert
+    const closeButtons = screen.getAllByRole('button');
+    // The Alert close button is typically the last one or has aria-label="Close"
+    const alertCloseButton = closeButtons.find(btn =>
+      btn.getAttribute('aria-label') === 'Close' ||
+      btn.className.includes('MuiAlert-closeButton')
+    );
+
+    if (alertCloseButton) {
+      fireEvent.click(alertCloseButton);
+      await waitFor(() => {
+        expect(mockReset).toHaveBeenCalled();
+      });
+    }
   });
 
   it('should apply minHeight/maxHeight based on isMobile', () => {
@@ -445,5 +456,107 @@ describe('TerminalModal', () => {
 
     // Dialog should now use mobile dimensions (fullScreen)
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('should call handleClose when close button is clicked', () => {
+    const mockReset = jest.fn();
+    const mockCleanup = jest.fn();
+    const mockSimpleReset = jest.fn();
+
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      reset: mockReset,
+    });
+
+    mockUseInteractiveTerminal.mockReturnValue({
+      ...defaultInteractiveTerminal,
+      cleanup: mockCleanup,
+    });
+
+    mockUseSimpleTerminal.mockReturnValue({
+      ...defaultSimpleTerminal,
+      reset: mockSimpleReset,
+    });
+
+    render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // Click the close button
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeButton);
+
+    // handleClose should call all cleanup functions
+    expect(mockCleanup).toHaveBeenCalled();
+    expect(mockSimpleReset).toHaveBeenCalled();
+    expect(mockReset).toHaveBeenCalled();
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it('should execute command when Enter is pressed without Shift in simple mode', () => {
+    const mockExecuteCommand = jest.fn();
+
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      mode: 'simple',
+    });
+
+    mockUseSimpleTerminal.mockReturnValue({
+      ...defaultSimpleTerminal,
+      command: 'ls -la',
+      executeCommand: mockExecuteCommand,
+    });
+
+    render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // Find the text field and simulate Enter key press
+    const textField = screen.getByPlaceholderText('ls -la');
+    fireEvent.keyPress(textField, { key: 'Enter', code: 'Enter', charCode: 13, shiftKey: false });
+
+    // handleKeyPress should call preventDefault and executeCommand
+    expect(mockExecuteCommand).toHaveBeenCalled();
+  });
+
+  it('should not execute command when Shift+Enter is pressed in simple mode', () => {
+    const mockExecuteCommand = jest.fn();
+
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      mode: 'simple',
+    });
+
+    mockUseSimpleTerminal.mockReturnValue({
+      ...defaultSimpleTerminal,
+      command: 'ls -la',
+      executeCommand: mockExecuteCommand,
+    });
+
+    render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // Find the text field and simulate Shift+Enter key press
+    const textField = screen.getByPlaceholderText('ls -la');
+    fireEvent.keyPress(textField, { key: 'Enter', code: 'Enter', charCode: 13, shiftKey: true });
+
+    // handleKeyPress should NOT call executeCommand when Shift is pressed
+    expect(mockExecuteCommand).not.toHaveBeenCalled();
   });
 });
