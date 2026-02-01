@@ -1,33 +1,29 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { Box, Container, Typography, Grid, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
-import { useAppDispatch } from '@/lib/store/hooks';
-import { logout as logoutAction } from '@/lib/store/authSlice';
-import { useAuthRedirect } from '@/lib/hooks/useAuthRedirect';
-import { useContainerList } from '@/lib/hooks/useContainerList';
-import { useTerminalModal } from '@/lib/hooks/useTerminalModal';
+import { Box, Container, Typography, Grid, CircularProgress } from '@mui/material';
+import { useDashboard } from '@/lib/hooks/useDashboard';
 import DashboardHeader from '@/components/Dashboard/DashboardHeader';
 import EmptyState from '@/components/Dashboard/EmptyState';
 import ContainerCard from '@/components/ContainerCard';
 import TerminalModal from '@/components/TerminalModal';
 
 export default function Dashboard() {
-  const { isAuthenticated, loading: authLoading } = useAuthRedirect('/');
-  const dispatch = useAppDispatch();
-  const router = useRouter();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const {
+    containers,
+    isRefreshing,
+    error,
+    refreshContainers,
+    selectedContainer,
+    isTerminalOpen,
+    openTerminal,
+    closeTerminal,
+    isMobile,
+    isInitialLoading,
+    showEmptyState,
+    handleLogout,
+  } = useDashboard();
 
-  const { containers, isRefreshing, isLoading, error, refreshContainers } = useContainerList(isAuthenticated);
-  const { selectedContainer, isTerminalOpen, openTerminal, closeTerminal } = useTerminalModal();
-
-  const handleLogout = async () => {
-    await dispatch(logoutAction());
-    router.push('/');
-  };
-
-  if (authLoading || isLoading) {
+  if (isInitialLoading) {
     return (
       <Box
         sx={{
@@ -59,7 +55,7 @@ export default function Dashboard() {
           </Box>
         )}
 
-        {containers.length === 0 && !isLoading ? (
+        {showEmptyState ? (
           <EmptyState />
         ) : (
           <Grid container spacing={3}>
