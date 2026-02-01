@@ -1,6 +1,14 @@
 import { renderHook, act } from '@testing-library/react';
 import { useInteractiveTerminal } from '../useInteractiveTerminal';
 
+type UseInteractiveTerminalProps = {
+  open: boolean;
+  containerId: string;
+  containerName: string;
+  isMobile: boolean;
+  onFallback: (reason: string) => void;
+};
+
 // Suppress console output during tests (terminal initialization logs)
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
@@ -113,7 +121,7 @@ describe('useInteractiveTerminal', () => {
       const mockDiv = document.createElement('div');
 
       const { rerender } = renderHook(
-        (props) => {
+        (props: UseInteractiveTerminalProps) => {
           const hook = useInteractiveTerminal(props);
           // Simulate ref being available
           if (hook.terminalRef.current === null) {

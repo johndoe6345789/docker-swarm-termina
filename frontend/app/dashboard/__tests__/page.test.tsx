@@ -46,18 +46,29 @@ const mockUseDashboard = useDashboard as jest.MockedFunction<typeof useDashboard
 
 describe('Dashboard Page', () => {
   const defaultDashboardState = {
+    // Authentication
+    isAuthenticated: true,
+    authLoading: false,
+    handleLogout: jest.fn(),
+
+    // Container list
     containers: [],
     isRefreshing: false,
-    error: null,
+    isLoading: false,
+    error: '',
     refreshContainers: jest.fn(),
+
+    // Terminal modal
     selectedContainer: null,
     isTerminalOpen: false,
     openTerminal: jest.fn(),
     closeTerminal: jest.fn(),
+
+    // UI state
     isMobile: false,
     isInitialLoading: false,
+    hasContainers: false,
     showEmptyState: false,
-    handleLogout: jest.fn(),
   };
 
   beforeEach(() => {
