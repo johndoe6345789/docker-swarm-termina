@@ -88,7 +88,7 @@ const server = http.createServer((req, res) => {
       // Container operations
       const containerOpMatch = url.match(/^\/api\/containers\/([^\/]+)\/(start|stop|restart)$/);
       if (containerOpMatch && method === 'POST') {
-        const [, containerId, operation] = containerOpMatch;
+        const [, , operation] = containerOpMatch;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           success: true,
