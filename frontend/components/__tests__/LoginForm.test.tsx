@@ -11,6 +11,12 @@ jest.mock('next/navigation', () => ({
   })),
 }));
 
+jest.mock('@/lib/api', () => ({
+  apiClient: {
+    login: jest.fn(),
+  },
+}));
+
 const createMockStore = (loading = false) =>
   configureStore({
     reducer: {
@@ -74,5 +80,36 @@ describe('LoginForm', () => {
     renderWithProvider(<LoginForm />);
 
     expect(screen.getByText(/default: admin \/ admin123/i)).toBeInTheDocument();
+  });
+
+  it('shows error message when error exists', () => {
+    const storeWithError = configureStore({
+      reducer: {
+        auth: authReducer,
+      },
+      preloadedState: {
+        auth: {
+          isAuthenticated: false,
+          loading: false,
+          username: null,
+          error: 'Invalid credentials',
+        },
+      },
+    });
+
+    render(
+      <Provider store={storeWithError}>
+        <LoginForm />
+      </Provider>
+    );
+
+    expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
+  });
+
+  it('disables submit button when loading', () => {
+    renderWithProvider(<LoginForm />, true);
+
+    const submitButton = screen.getByRole('button', { name: /logging in/i });
+    expect(submitButton).toBeDisabled();
   });
 });
