@@ -109,6 +109,11 @@ export function useInteractiveTerminal({
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
 
+        // Expose terminal for debugging
+        if (typeof window !== 'undefined') {
+          (window as any)._debugTerminal = term;
+        }
+
         const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
         socket = io(`${wsUrl}/terminal`, {
           transports: ['polling', 'websocket'],
@@ -148,7 +153,10 @@ export function useInteractiveTerminal({
         });
 
         socket.on('output', (data: { data: string }) => {
-          term?.write(data.data);
+          console.log('Received output event:', data);
+          if (term && data && data.data) {
+            term.write(data.data);
+          }
         });
 
         socket.on('error', (data: { error: string }) => {
