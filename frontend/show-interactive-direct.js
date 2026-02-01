@@ -13,6 +13,21 @@ const { chromium } = require('playwright');
 
     const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 }})).newPage();
 
+    // Capture all console messages
+    const errors = [];
+    const warnings = [];
+    page.on('console', msg => {
+      const type = msg.type();
+      const text = msg.text();
+      if (type === 'error') {
+        errors.push(text);
+        console.log(`[BROWSER ERROR]`, text);
+      } else if (type === 'warning') {
+        warnings.push(text);
+        console.log(`[BROWSER WARNING]`, text);
+      }
+    });
+
     // Mock containers API
     await page.route('**/api/containers', async (route) => {
       await route.fulfill({
@@ -131,6 +146,13 @@ const { chromium } = require('playwright');
     console.log('---');
     console.log(status.bufferText);
     console.log('---\n');
+
+    console.log('Errors captured:', errors.length);
+    console.log('Warnings captured:', warnings.length);
+    if (errors.length > 0) {
+      console.log('\nUnique errors:');
+      [...new Set(errors)].forEach((err, i) => console.log(`${i + 1}. ${err.substring(0, 150)}`));
+    }
 
     await page.screenshot({
       path: '/home/user/docker-swarm-termina/frontend/gnome-interactive-demo.png',
