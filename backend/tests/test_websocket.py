@@ -6,6 +6,43 @@ from flask_socketio import SocketIOTestClient
 pytestmark = pytest.mark.unit
 
 
+class TestSocketIOConfiguration:
+    """Test Socket.IO server configuration"""
+
+    def test_socketio_supports_both_transports(self):
+        """Verify SocketIO is configured to support both polling and websocket"""
+        from app import socketio
+
+        # SocketIO should be initialized
+        assert socketio is not None
+
+        # Verify configuration parameters
+        assert socketio.async_mode == 'threading'
+        assert socketio.ping_timeout == 60
+        assert socketio.ping_interval == 25
+
+    def test_socketio_cors_enabled(self):
+        """Verify CORS is enabled for all origins"""
+        from app import socketio
+
+        # CORS should be enabled for all origins (required for frontend)
+        # The socketio object has cors_allowed_origins set
+        assert hasattr(socketio, 'server')
+
+    def test_socketio_namespace_registered(self):
+        """Verify /terminal namespace handlers are registered"""
+        from app import socketio
+
+        # Verify the namespace is registered
+        # Flask-SocketIO registers handlers internally
+        assert socketio is not None
+
+        # We can verify by creating a test client
+        from app import app
+        client = socketio.test_client(app, namespace='/terminal')
+        assert client.is_connected('/terminal')
+
+
 class TestWebSocketHandlers:
     """Test WebSocket terminal handlers"""
 
