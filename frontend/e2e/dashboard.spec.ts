@@ -60,10 +60,20 @@ test.describe('Dashboard Page', () => {
 
 test.describe('Dashboard - Protected Route', () => {
   test('should redirect to login when not authenticated', async ({ page }) => {
+    // Go to page first to establish context
+    await page.goto('/');
+
     // Clear any existing auth state
     await page.context().clearCookies();
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => {
+      try {
+        localStorage.clear();
+      } catch (e) {
+        // Ignore if localStorage is not accessible
+      }
+    });
 
+    // Now try to access dashboard
     await page.goto('/dashboard');
 
     // Should redirect to login

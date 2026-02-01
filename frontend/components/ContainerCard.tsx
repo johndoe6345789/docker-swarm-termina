@@ -37,6 +37,7 @@ export default function ContainerCard({ container, onOpenShell, onContainerUpdat
 
   return (
     <Card
+      data-testid="container-card"
       sx={{
         borderLeft: 4,
         borderColor: borderColors[container.status as keyof typeof borderColors] || borderColors.stopped,
