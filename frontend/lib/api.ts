@@ -37,6 +37,8 @@ export interface CommandResponse {
   success: boolean;
   output?: string;
   error?: string;
+  workdir?: string;
+  exit_code?: number;
 }
 
 export interface ContainerActionResponse {

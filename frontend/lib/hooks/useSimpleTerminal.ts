@@ -36,7 +36,7 @@ export function useSimpleTerminal(containerId: string) {
       if (result.output && result.output.trim()) {
         setOutput((prev) => [...prev, {
           type: result.exit_code === 0 ? 'output' : 'error',
-          content: result.output
+          content: result.output || ''
         }]);
       } else if (command.trim().startsWith('ls')) {
         setOutput((prev) => [...prev, {
