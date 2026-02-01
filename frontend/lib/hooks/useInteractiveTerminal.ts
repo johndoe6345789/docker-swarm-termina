@@ -4,6 +4,13 @@ import { apiClient, API_BASE_URL } from '@/lib/api';
 import type { Terminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
 
+// Type declaration for debug property
+declare global {
+  interface Window {
+    _debugTerminal?: Terminal;
+  }
+}
+
 interface UseInteractiveTerminalProps {
   open: boolean;
   containerId: string;
@@ -15,6 +22,8 @@ interface UseInteractiveTerminalProps {
 export function useInteractiveTerminal({
   open,
   containerId,
+  // containerName is not used but required in the interface for consistency
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   containerName,
   isMobile,
   onFallback,
@@ -111,7 +120,7 @@ export function useInteractiveTerminal({
 
         // Expose terminal for debugging
         if (typeof window !== 'undefined') {
-          (window as any)._debugTerminal = term;
+          window._debugTerminal = term;
         }
 
         // Use polling only - WebSocket is blocked by Cloudflare/reverse proxy

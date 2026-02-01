@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { Providers } from "./providers";
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains-mono',
+});
 
 export const metadata: Metadata = {
   title: "Container Shell - Docker Swarm Terminal",
@@ -15,15 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={jetbrainsMono.variable}>
       <body>
         <Script src="/env.js" strategy="beforeInteractive" />
         <ThemeProvider>

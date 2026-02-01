@@ -28,7 +28,7 @@ describe('ContainerHeader', () => {
   });
 
   it('applies success color for running status', () => {
-    const { container } = render(
+    render(
       <ContainerHeader name="test-container" image="nginx:latest" status="running" />
     );
 
@@ -37,7 +37,7 @@ describe('ContainerHeader', () => {
   });
 
   it('applies default color for stopped status', () => {
-    const { container } = render(
+    render(
       <ContainerHeader name="test-container" image="nginx:latest" status="stopped" />
     );
 
@@ -46,7 +46,7 @@ describe('ContainerHeader', () => {
   });
 
   it('applies warning color for paused status', () => {
-    const { container } = render(
+    render(
       <ContainerHeader name="test-container" image="nginx:latest" status="paused" />
     );
 

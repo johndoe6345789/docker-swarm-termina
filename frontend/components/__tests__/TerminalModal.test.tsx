@@ -265,7 +265,7 @@ describe('TerminalModal', () => {
       isMobile: true,
     });
 
-    const { container } = render(
+    render(
       <TerminalModal
         open={true}
         onClose={mockOnClose}

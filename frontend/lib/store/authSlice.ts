@@ -24,7 +24,7 @@ export const initAuth = createAsyncThunk('auth/init', async () => {
       await apiClient.getContainers();
       const username = apiClient.getUsername();
       return { isAuthenticated: true, username };
-    } catch (error) {
+    } catch {
       // Token is invalid, clear it
       apiClient.setToken(null);
       return { isAuthenticated: false, username: null };
@@ -42,7 +42,7 @@ export const login = createAsyncThunk(
         return { username: response.username || username };
       }
       return rejectWithValue(response.message || 'Login failed');
-    } catch (error) {
+    } catch {
       return rejectWithValue('Login failed. Please try again.');
     }
   }
