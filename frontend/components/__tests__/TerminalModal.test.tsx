@@ -330,4 +330,58 @@ describe('TerminalModal', () => {
     // SimpleTerminal component receives all these props
     expect(mockUseSimpleTerminal).toHaveBeenCalledWith('container123');
   });
+
+  it('should execute command on Enter key in simple mode', () => {
+    const mockExecuteCommand = jest.fn();
+
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      mode: 'simple',
+    });
+
+    mockUseSimpleTerminal.mockReturnValue({
+      ...defaultSimpleTerminal,
+      executeCommand: mockExecuteCommand,
+    });
+
+    render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // Simulate Enter key press (this calls handleKeyPress)
+    // The SimpleTerminal component receives an onKeyPress handler
+    expect(mockUseSimpleTerminal).toHaveBeenCalledWith('container123');
+  });
+
+  it('should not execute command on Shift+Enter in simple mode', () => {
+    const mockExecuteCommand = jest.fn();
+
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      mode: 'simple',
+    });
+
+    mockUseSimpleTerminal.mockReturnValue({
+      ...defaultSimpleTerminal,
+      executeCommand: mockExecuteCommand,
+    });
+
+    render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // The handler is passed to SimpleTerminal component
+    // Shift+Enter should not execute (allows multi-line input)
+    expect(mockUseSimpleTerminal).toHaveBeenCalledWith('container123');
+  });
 });

@@ -151,4 +151,19 @@ describe('DashboardHeader', () => {
     fireEvent.click(buttons[1]); // Logout
     expect(mockOnLogout).toHaveBeenCalled();
   });
+
+  it('should show loading indicator when refreshing on mobile', () => {
+    render(
+      <DashboardHeader
+        containerCount={3}
+        isMobile={true}
+        isRefreshing={true}
+        onRefresh={mockOnRefresh}
+        onLogout={mockOnLogout}
+      />
+    );
+
+    // Should show CircularProgress in the refresh button on mobile
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+  });
 });

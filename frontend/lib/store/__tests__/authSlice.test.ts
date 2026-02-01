@@ -73,6 +73,19 @@ describe('authSlice', () => {
       expect(state.loading).toBe(false);
     });
 
+    it('handles successful login without username in response', async () => {
+      const mockLoginResponse = { success: true, token: 'test-token' };
+      (apiClient.apiClient.login as jest.Mock).mockResolvedValue(mockLoginResponse);
+
+      await store.dispatch(login({ username: 'inputuser', password: 'password' }));
+
+      const state = store.getState().auth;
+      expect(state.isAuthenticated).toBe(true);
+      // Should fall back to provided username
+      expect(state.username).toBe('inputuser');
+      expect(state.loading).toBe(false);
+    });
+
     it('handles login failure with custom message', async () => {
       const mockLoginResponse = { success: false, message: 'Invalid credentials' };
       (apiClient.apiClient.login as jest.Mock).mockResolvedValue(mockLoginResponse);
