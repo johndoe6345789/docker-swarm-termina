@@ -125,4 +125,72 @@ describe('useTerminalModalState', () => {
 
     expect(result.current.isMobile).toBe(false);
   });
+
+  describe('handler stability (useCallback memoization)', () => {
+    it('should return stable handleFallback reference across renders', () => {
+      const { result, rerender } = renderHook(() => useTerminalModalState());
+
+      const firstHandleFallback = result.current.handleFallback;
+
+      // Trigger a re-render
+      rerender();
+
+      const secondHandleFallback = result.current.handleFallback;
+
+      // Handler should be the same reference (memoized with useCallback)
+      expect(firstHandleFallback).toBe(secondHandleFallback);
+    });
+
+    it('should return stable handleModeChange reference across renders', () => {
+      const { result, rerender } = renderHook(() => useTerminalModalState());
+
+      const firstHandler = result.current.handleModeChange;
+
+      rerender();
+
+      const secondHandler = result.current.handleModeChange;
+
+      expect(firstHandler).toBe(secondHandler);
+    });
+
+    it('should return stable handleRetryInteractive reference across renders', () => {
+      const { result, rerender } = renderHook(() => useTerminalModalState());
+
+      const firstHandler = result.current.handleRetryInteractive;
+
+      rerender();
+
+      const secondHandler = result.current.handleRetryInteractive;
+
+      expect(firstHandler).toBe(secondHandler);
+    });
+
+    it('should return stable reset reference across renders', () => {
+      const { result, rerender } = renderHook(() => useTerminalModalState());
+
+      const firstHandler = result.current.reset;
+
+      rerender();
+
+      const secondHandler = result.current.reset;
+
+      expect(firstHandler).toBe(secondHandler);
+    });
+
+    it('should maintain handler stability even after state changes', () => {
+      const { result, rerender } = renderHook(() => useTerminalModalState());
+
+      const firstHandleFallback = result.current.handleFallback;
+
+      // Trigger state change
+      act(() => {
+        result.current.handleFallback('Test error');
+      });
+
+      rerender();
+
+      // Handler should still be the same reference
+      expect(result.current.handleFallback).toBe(firstHandleFallback);
+    });
+  });
 });
