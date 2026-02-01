@@ -26,21 +26,37 @@ export function useInteractiveTerminal({
   const connectionAttempts = useRef(0);
 
   useEffect(() => {
-    if (!open || !terminalRef.current) return;
+    if (!open) return;
 
     let term: Terminal | null = null;
     let fitAddon: FitAddon | null = null;
     let socket: Socket | null = null;
+    let mounted = true;
 
     const initTerminal = async () => {
       try {
+        // Wait for ref to be available
+        let attempts = 0;
+        while (!terminalRef.current && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+
+        if (!terminalRef.current || !mounted) {
+          console.warn('Terminal ref not available after waiting');
+          return;
+        }
+
+        console.log('Initializing interactive terminal...');
+
         const [{ Terminal }, { FitAddon }] = await Promise.all([
           import('@xterm/xterm'),
           import('@xterm/addon-fit'),
         ]);
 
-        if (!terminalRef.current) return;
+        if (!terminalRef.current || !mounted) return;
 
+        console.log('Creating terminal instance...');
         term = new Terminal({
           cursorBlink: true,
           fontSize: isMobile ? 12 : 14,
@@ -68,9 +84,13 @@ export function useInteractiveTerminal({
           },
         });
 
+        console.log('Loading fit addon...');
         fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
+
+        console.log('Opening terminal in DOM...');
         term.open(terminalRef.current);
+        console.log('Terminal opened successfully');
 
         setTimeout(() => {
           try {
@@ -173,19 +193,29 @@ export function useInteractiveTerminal({
         window.addEventListener('resize', handleResize);
 
         return () => {
+          mounted = false;
           window.removeEventListener('resize', handleResize);
-          if (term) term.dispose();
-          if (socket) socket.disconnect();
+          if (term) {
+            console.log('Disposing terminal...');
+            term.dispose();
+          }
+          if (socket) {
+            console.log('Disconnecting socket...');
+            socket.disconnect();
+          }
         };
       } catch (error) {
         console.error('Failed to initialize terminal:', error);
-        onFallback('Failed to load terminal. Switching to simple mode.');
+        if (mounted) {
+          onFallback('Failed to load terminal. Switching to simple mode.');
+        }
       }
     };
 
     const cleanup = initTerminal();
 
     return () => {
+      mounted = false;
       cleanup.then((cleanupFn) => {
         if (cleanupFn) cleanupFn();
       });
