@@ -31,7 +31,7 @@ jest.mock('../providers', () => ({
 
 // Mock Next.js Script component
 jest.mock('next/script', () => {
-  return function Script(props: any) {
+  return function Script(props: Record<string, unknown>) {
     return <script data-testid="next-script" {...props} />;
   };
 });

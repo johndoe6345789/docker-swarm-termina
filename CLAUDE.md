@@ -59,11 +59,12 @@ gh auth login
 **NEVER commit code without verifying it works with the existing tests.**
 
 **CRITICAL: You MUST keep working until ALL tests pass and coverage is maintained.**
+- ❌ Do NOT commit if linting has ANY errors
 - ❌ Do NOT commit if ANY test fails
 - ❌ Do NOT commit if the build fails
 - ❌ Do NOT commit if coverage drops
 - ✅ Keep iterating and fixing until 100% of tests pass
-- ✅ Only commit when the FULL test suite passes
+- ✅ Only commit when the FULL test suite passes (linting, tests, build)
 
 ### Before Making Any Changes
 
@@ -98,13 +99,16 @@ When making changes to components or functionality:
    # Step 1: Install dependencies
    npm ci
 
-   # Step 2: Run unit tests (REQUIRED - must pass)
+   # Step 2: Run linting (REQUIRED - must have no errors)
+   npm run lint
+
+   # Step 3: Run unit tests (REQUIRED - must pass)
    npm test
 
-   # Step 3: Build the app (REQUIRED - must succeed)
+   # Step 4: Build the app (REQUIRED - must succeed)
    npm run build
 
-   # Step 4: Run e2e tests with mock backend (automatically starts servers)
+   # Step 5: Run e2e tests with mock backend (automatically starts servers)
    npx playwright install chromium --with-deps
    npm run test:e2e
    ```
@@ -126,9 +130,10 @@ When making changes to components or functionality:
    **Option C: Minimum verification (if e2e cannot run):**
    ```bash
    cd frontend
-   npm ci          # Install dependencies
-   npm test        # Run unit tests - MUST PASS
-   npm run build   # Build app - MUST SUCCEED
+   npm ci            # Install dependencies
+   npm run lint      # Run linting - MUST HAVE NO ERRORS
+   npm test          # Run unit tests - MUST PASS
+   npm run build     # Build app - MUST SUCCEED
 
    # Manually verify e2e expectations by reading test files
    cat e2e/login.spec.ts
@@ -145,17 +150,20 @@ When making changes to components or functionality:
 4. **Keep working until ALL tests pass**
 
    **CRITICAL REQUIREMENT:**
+   - If linting has errors → Fix the code and re-run until there are no errors
    - If ANY unit test fails → Fix the code and re-run until ALL pass
    - If the build fails → Fix the code and re-run until it succeeds
    - If ANY e2e test fails → Fix the code and re-run until ALL pass
    - If you can't run e2e tests → Manually verify changes match ALL e2e expectations
    - Do NOT commit partial fixes or "good enough" code
-   - ONLY commit when the FULL test suite passes (282/282 unit tests, 11/11 e2e tests)
+   - ONLY commit when the FULL test suite passes (no lint errors, 282/282 unit tests, 11/11 e2e tests)
 
    **Your responsibility:** Keep iterating and fixing until you achieve 100% test success.
 
 ### Common Mistakes to Avoid
 
+- ❌ Not running linting before committing
+- ❌ Committing code with linting errors (even warnings should be fixed)
 - ❌ Changing button text without checking what tests expect
 - ❌ Modifying component structure without verifying e2e selectors
 - ❌ Assuming tests will adapt to your changes
@@ -185,6 +193,12 @@ When making changes to components or functionality:
 ```bash
 # Install frontend dependencies
 cd frontend && npm ci
+
+# Run linting (REQUIRED before commit)
+cd frontend && npm run lint
+
+# Fix auto-fixable linting issues
+cd frontend && npm run lint -- --fix
 
 # Run unit tests
 cd frontend && npm test
@@ -293,20 +307,22 @@ grep -r "getByRole\|getByText\|getByLabel" frontend/**/__tests__/
 
 1. ✅ **Read test files** to understand expectations
 2. ✅ **Make changes** matching what tests expect
-3. ✅ **Run unit tests**: `npm test` → MUST show 282/282 passing
-4. ✅ **Run build**: `npm run build` → MUST succeed with no errors
-5. ✅ **Run e2e tests**: `npm run test:e2e` → MUST show 11/11 passing
-6. ✅ **Fix failures**: If ANY test fails, go back to step 2 and fix the code
-7. ✅ **Iterate**: Repeat steps 2-6 until 100% of tests pass
-8. ✅ **Commit**: ONLY after achieving full test suite success
-9. ✅ **Push**: To designated branch
+3. ✅ **Run linting**: `npm run lint` → MUST have zero errors
+4. ✅ **Run unit tests**: `npm test` → MUST show 282/282 passing
+5. ✅ **Run build**: `npm run build` → MUST succeed with no errors
+6. ✅ **Run e2e tests**: `npm run test:e2e` → MUST show 11/11 passing
+7. ✅ **Fix failures**: If ANY check fails, go back to step 2 and fix the code
+8. ✅ **Iterate**: Repeat steps 2-7 until 100% of checks pass
+9. ✅ **Commit**: ONLY after achieving full test suite success
+10. ✅ **Push**: To designated branch
 
 **Acceptance Criteria Before Committing:**
+- ✅ Linting passes with zero errors (warnings should be fixed too)
 - ✅ 282/282 unit tests passing (100%)
 - ✅ Build succeeds with zero errors
 - ✅ 11/11 e2e tests passing (100%)
 - ✅ No test coverage regression
 
-Remember: **Code that doesn't pass the FULL test suite is broken code.**
+Remember: **Code that doesn't pass the FULL test suite (including linting) is broken code.**
 
-**If tests fail, you MUST fix them before committing. No exceptions.**
+**If linting or tests fail, you MUST fix them before committing. No exceptions.**

@@ -68,7 +68,7 @@ test.describe('Dashboard - Protected Route', () => {
     await page.evaluate(() => {
       try {
         localStorage.clear();
-      } catch (e) {
+      } catch {
         // Ignore if localStorage is not accessible
       }
     });

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, Divider, Snackbar, Alert } from '@mui/material';
-import { Container } from '@/lib/api';
 import { ContainerCardProps } from '@/lib/interfaces/container';
 import { useContainerActions } from '@/lib/hooks/useContainerActions';
 import ContainerHeader from './ContainerCard/ContainerHeader';
