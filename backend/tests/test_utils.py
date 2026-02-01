@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from app import format_uptime
+from utils.formatters import format_uptime
 
 
 class TestUtilityFunctions:

@@ -3,8 +3,12 @@ import os
 from config import logger
 
 
-def diagnose_docker_environment():
-    """Diagnose Docker environment and configuration."""
+def diagnose_docker_environment():  # pylint: disable=too-many-locals,too-many-statements
+    """Diagnose Docker environment and configuration.
+
+    This function intentionally performs many checks and has many local variables
+    as it needs to comprehensively diagnose the Docker environment.
+    """
     logger.info("=== Docker Environment Diagnosis ===")
 
     # Check environment variables
@@ -40,7 +44,6 @@ def diagnose_docker_environment():
         logger.info("✓ Docker socket exists at %s", socket_path)
 
         # Check permissions
-        import stat  # pylint: disable=import-outside-toplevel
         st = os.stat(socket_path)
         logger.info("  Socket permissions: %s", oct(st.st_mode))
         logger.info("  Socket owner UID: %s", st.st_uid)

@@ -1,8 +1,7 @@
 """Stop container route."""
 from flask import Blueprint, jsonify
 from config import logger
-from utils.auth import check_auth
-from utils.docker_client import get_docker_client
+from utils.container_helpers import get_auth_and_container
 
 stop_bp = Blueprint('stop_container', __name__)
 
@@ -10,16 +9,11 @@ stop_bp = Blueprint('stop_container', __name__)
 @stop_bp.route('/api/containers/<container_id>/stop', methods=['POST'])
 def stop_container(container_id):
     """Stop a running container."""
-    is_valid, _, error_response = check_auth()
-    if not is_valid:
+    container, error_response = get_auth_and_container(container_id)
+    if error_response:
         return error_response
 
-    client = get_docker_client()
-    if not client:
-        return jsonify({'error': 'Cannot connect to Docker'}), 500
-
     try:
-        container = client.containers.get(container_id)
         container.stop()
         logger.info("Stopped container %s", container_id)
         return jsonify({'success': True, 'message': f'Container {container_id} stopped'})
