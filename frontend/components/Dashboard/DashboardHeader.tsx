@@ -65,15 +65,15 @@ export default function DashboardHeader({
           {isMobile ? (
             <>
               <IconButton
-                color="inherit"
+                color="secondary"
                 onClick={onRefresh}
                 disabled={isRefreshing}
                 size="small"
               >
-                {isRefreshing ? <CircularProgress size={20} /> : <Refresh />}
+                {isRefreshing ? <CircularProgress size={20} color="secondary" /> : <Refresh />}
               </IconButton>
               <IconButton
-                color="inherit"
+                color="secondary"
                 onClick={onLogout}
                 size="small"
               >
@@ -84,15 +84,17 @@ export default function DashboardHeader({
             <>
               <Button
                 variant="outlined"
+                color="secondary"
                 size="small"
                 onClick={onRefresh}
                 disabled={isRefreshing}
-                startIcon={isRefreshing ? <CircularProgress size={16} /> : <Refresh />}
+                startIcon={isRefreshing ? <CircularProgress size={16} color="secondary" /> : <Refresh />}
               >
                 Refresh
               </Button>
               <Button
                 variant="outlined"
+                color="secondary"
                 size="small"
                 onClick={onLogout}
                 startIcon={<Logout />}

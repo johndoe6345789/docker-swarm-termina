@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Chip } from '@mui/material';
+import { Box, Typography, Chip, Tooltip } from '@mui/material';
 import { PlayArrow, Inventory2 } from '@mui/icons-material';
 import { ContainerHeaderProps } from '@/lib/interfaces/container';
 
@@ -30,30 +30,34 @@ export default function ContainerHeader({ name, image, status }: ContainerHeader
           <Inventory2 sx={{ color: 'secondary.main', fontSize: 20 }} />
         </Box>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography
-            variant="h3"
-            component="h3"
-            sx={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontWeight: 500,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {name}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {image}
-          </Typography>
+          <Tooltip title={name} placement="top" arrow>
+            <Typography
+              variant="h3"
+              component="h3"
+              sx={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontWeight: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </Typography>
+          </Tooltip>
+          <Tooltip title={image} placement="bottom" arrow>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {image}
+            </Typography>
+          </Tooltip>
         </Box>
       </Box>
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { Providers } from "./providers";
@@ -22,9 +23,9 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <script src="/env.js" />
       </head>
       <body>
+        <Script src="/env.js" strategy="beforeInteractive" />
         <ThemeProvider>
           <Providers>
             {children}

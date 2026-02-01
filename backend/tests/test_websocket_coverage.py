@@ -21,7 +21,7 @@ class TestWebSocketCoverage:
         from app import socketio
         return socketio.test_client(app, namespace='/terminal')
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_start_terminal_success_flow(self, mock_get_client, socketio_client, auth_token):
         """Test successful terminal start with mocked Docker"""
         # Create mock Docker client and container
@@ -77,7 +77,7 @@ class TestWebSocketCoverage:
         assert call_args[1]['environment']['COLUMNS'] == '100'
         assert call_args[1]['environment']['LINES'] == '30'
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_start_terminal_creates_thread(self, mock_get_client, socketio_client, auth_token):
         """Test that starting terminal creates output thread"""
         mock_client = MagicMock()
@@ -130,7 +130,7 @@ class TestWebSocketCoverage:
             decoded = invalid_utf8.decode('latin-1', errors='replace')
             assert decoded is not None  # Should not crash
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_start_terminal_latin1_fallback(self, mock_get_client, socketio_client, auth_token):
         """Test latin-1 fallback for invalid UTF-8"""
         mock_client = MagicMock()
@@ -166,7 +166,7 @@ class TestWebSocketCoverage:
         decoding_errors = [msg for msg in error_msgs if 'decode' in str(msg).lower()]
         assert len(decoding_errors) == 0
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_start_terminal_container_not_found(self, mock_get_client, socketio_client, auth_token):
         """Test error when container doesn't exist"""
         mock_client = MagicMock()
@@ -186,7 +186,7 @@ class TestWebSocketCoverage:
         assert len(error_msgs) > 0, "Should receive error message"
         assert 'not found' in error_msgs[0]['args'][0]['error'].lower()
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_start_terminal_exec_error(self, mock_get_client, socketio_client, auth_token):
         """Test error during exec_run"""
         mock_client = MagicMock()
@@ -207,7 +207,7 @@ class TestWebSocketCoverage:
 
         assert len(error_msgs) > 0, "Should receive error message"
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_handle_input_error_handling(self, mock_get_client, socketio_client, auth_token):
         """Test error handling in handle_input when sendall fails"""
         import app
@@ -250,7 +250,7 @@ class TestWebSocketCoverage:
         # Should receive error about socket problem
         assert len(error_msgs) > 0, "Should receive error from failed sendall"
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_disconnect_cleanup(self, mock_get_client, socketio_client, auth_token):
         """Test that disconnect properly cleans up active terminals"""
         import app
@@ -313,7 +313,7 @@ class TestWebSocketCoverage:
         error_msgs = [msg for msg in received if msg['name'] == 'error']
         assert len(error_msgs) == 0, "Resize should not error"
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_socket_close_on_exit(self, mock_get_client, socketio_client, auth_token):
         """Test that socket is closed when thread exits"""
         mock_client = MagicMock()
@@ -343,7 +343,7 @@ class TestWebSocketCoverage:
         # but the code path is exercised
         assert True
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_default_terminal_size(self, mock_get_client, socketio_client, auth_token):
         """Test default terminal size when not specified"""
         mock_client = MagicMock()
@@ -373,7 +373,7 @@ class TestWebSocketCoverage:
         assert call_args[1]['environment']['COLUMNS'] == '80'
         assert call_args[1]['environment']['LINES'] == '24'
 
-    @patch('app.get_docker_client')
+    @patch('handlers.terminal.start.get_docker_client')
     def test_input_with_direct_socket_fallback(self, mock_get_client, socketio_client, auth_token):
         """Test that input works with direct socket (no _sock attribute)"""
         import app

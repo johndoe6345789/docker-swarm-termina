@@ -12,7 +12,7 @@ class TestContainerExec:
         })
         assert response.status_code == 401
 
-    @patch('app.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_simple_command(self, mock_get_client, client, auth_headers, auth_token):
         """Test executing a simple command"""
         # Mock exec result
@@ -37,7 +37,7 @@ class TestContainerExec:
         assert 'file1.txt' in data['output']
         assert data['workdir'] == '/app'
 
-    @patch('app.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_cd_command(self, mock_get_client, client, auth_headers, auth_token):
         """Test executing cd command"""
         # Mock exec result for cd command
@@ -62,7 +62,7 @@ class TestContainerExec:
         assert data['workdir'] == '/home/user'
         assert data['output'] == ''
 
-    @patch('app.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_command_with_error(self, mock_get_client, client, auth_headers, auth_token):
         """Test executing a command that fails"""
         # Mock exec result with error
@@ -86,7 +86,7 @@ class TestContainerExec:
         assert data['exit_code'] == 127
         assert 'command not found' in data['output']
 
-    @patch('app.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_docker_unavailable(self, mock_get_client, client, auth_headers):
         """Test exec when Docker is unavailable"""
         mock_get_client.return_value = None
@@ -99,7 +99,7 @@ class TestContainerExec:
         data = response.get_json()
         assert 'error' in data
 
-    @patch('app.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_unicode_handling(self, mock_get_client, client, auth_headers, auth_token):
         """Test exec with unicode output"""
         # Mock exec result with unicode

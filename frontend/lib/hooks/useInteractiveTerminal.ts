@@ -26,51 +26,77 @@ export function useInteractiveTerminal({
   const connectionAttempts = useRef(0);
 
   useEffect(() => {
-    if (!open || !terminalRef.current) return;
+    if (!open) return;
 
     let term: Terminal | null = null;
     let fitAddon: FitAddon | null = null;
     let socket: Socket | null = null;
+    let mounted = true;
 
     const initTerminal = async () => {
       try {
+        // Wait for ref to be available
+        let attempts = 0;
+        while (!terminalRef.current && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+
+        if (!terminalRef.current || !mounted) {
+          console.warn('Terminal ref not available after waiting');
+          return;
+        }
+
+        console.log('Initializing interactive terminal...');
+
         const [{ Terminal }, { FitAddon }] = await Promise.all([
           import('@xterm/xterm'),
           import('@xterm/addon-fit'),
         ]);
 
-        if (!terminalRef.current) return;
+        if (!terminalRef.current || !mounted) return;
 
+        console.log('Creating terminal instance...');
         term = new Terminal({
           cursorBlink: true,
           fontSize: isMobile ? 12 : 14,
-          fontFamily: '"Ubuntu Mono", "Courier New", monospace',
+          fontFamily: '"Ubuntu Mono", "DejaVu Sans Mono", "Courier New", monospace',
           theme: {
-            background: '#300A24',
-            foreground: '#F8F8F2',
-            cursor: '#F8F8F2',
-            black: '#2C0922',
-            red: '#FF5555',
-            green: '#50FA7B',
-            yellow: '#F1FA8C',
-            blue: '#8BE9FD',
-            magenta: '#FF79C6',
-            cyan: '#8BE9FD',
-            white: '#F8F8F2',
-            brightBlack: '#6272A4',
-            brightRed: '#FF6E6E',
-            brightGreen: '#69FF94',
-            brightYellow: '#FFFFA5',
-            brightBlue: '#D6ACFF',
-            brightMagenta: '#FF92DF',
-            brightCyan: '#A4FFFF',
-            brightWhite: '#FFFFFF',
+            // GNOME Terminal color scheme
+            background: '#2E3436',
+            foreground: '#D3D7CF',
+            cursor: '#D3D7CF',
+            cursorAccent: '#2E3436',
+            selectionBackground: '#4A90D9',
+            selectionForeground: '#FFFFFF',
+            // Standard colors
+            black: '#2E3436',
+            red: '#CC0000',
+            green: '#4E9A06',
+            yellow: '#C4A000',
+            blue: '#3465A4',
+            magenta: '#75507B',
+            cyan: '#06989A',
+            white: '#D3D7CF',
+            // Bright colors
+            brightBlack: '#555753',
+            brightRed: '#EF2929',
+            brightGreen: '#8AE234',
+            brightYellow: '#FCE94F',
+            brightBlue: '#729FCF',
+            brightMagenta: '#AD7FA8',
+            brightCyan: '#34E2E2',
+            brightWhite: '#EEEEEC',
           },
         });
 
+        console.log('Loading fit addon...');
         fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
+
+        console.log('Opening terminal in DOM...');
         term.open(terminalRef.current);
+        console.log('Terminal opened successfully');
 
         setTimeout(() => {
           try {
@@ -82,6 +108,11 @@ export function useInteractiveTerminal({
 
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
+
+        // Expose terminal for debugging
+        if (typeof window !== 'undefined') {
+          (window as any)._debugTerminal = term;
+        }
 
         const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
         socket = io(`${wsUrl}/terminal`, {
@@ -122,7 +153,10 @@ export function useInteractiveTerminal({
         });
 
         socket.on('output', (data: { data: string }) => {
-          term?.write(data.data);
+          console.log('Received output event:', data);
+          if (term && data && data.data) {
+            term.write(data.data);
+          }
         });
 
         socket.on('error', (data: { error: string }) => {
@@ -173,19 +207,29 @@ export function useInteractiveTerminal({
         window.addEventListener('resize', handleResize);
 
         return () => {
+          mounted = false;
           window.removeEventListener('resize', handleResize);
-          if (term) term.dispose();
-          if (socket) socket.disconnect();
+          if (term) {
+            console.log('Disposing terminal...');
+            term.dispose();
+          }
+          if (socket) {
+            console.log('Disconnecting socket...');
+            socket.disconnect();
+          }
         };
       } catch (error) {
         console.error('Failed to initialize terminal:', error);
-        onFallback('Failed to load terminal. Switching to simple mode.');
+        if (mounted) {
+          onFallback('Failed to load terminal. Switching to simple mode.');
+        }
       }
     };
 
     const cleanup = initTerminal();
 
     return () => {
+      mounted = false;
       cleanup.then((cleanupFn) => {
         if (cleanupFn) cleanupFn();
       });

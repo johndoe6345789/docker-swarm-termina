@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Tooltip } from '@mui/material';
 import { ContainerInfoProps } from '@/lib/interfaces/container';
 
 export default function ContainerInfo({ id, uptime }: ContainerInfoProps) {
@@ -18,12 +18,19 @@ export default function ContainerInfo({ id, uptime }: ContainerInfoProps) {
         >
           Container ID
         </Typography>
-        <Typography
-          variant="body2"
-          sx={{ fontFamily: '"JetBrains Mono", monospace' }}
-        >
-          {id}
-        </Typography>
+        <Tooltip title={id} placement="top" arrow>
+          <Typography
+            variant="body2"
+            sx={{
+              fontFamily: '"JetBrains Mono", monospace',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {id}
+          </Typography>
+        </Tooltip>
       </Box>
       <Box>
         <Typography
