@@ -9,15 +9,18 @@ export default function InteractiveTerminal({ terminalRef }: InteractiveTerminal
       ref={terminalRef}
       sx={{
         height: { xs: '400px', sm: '500px' },
-        backgroundColor: '#300A24',
+        backgroundColor: '#2E3436',
         borderRadius: '4px',
-        border: '1px solid #5E2750',
+        border: '1px solid #1C1F20',
         overflow: 'hidden',
         '& .xterm': {
-          padding: '8px',
+          padding: '10px',
         },
         '& .xterm-viewport': {
-          backgroundColor: '#300A24 !important',
+          backgroundColor: '#2E3436 !important',
+        },
+        '& .xterm-screen': {
+          backgroundColor: '#2E3436',
         },
       }}
     />
