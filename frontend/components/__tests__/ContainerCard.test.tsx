@@ -83,6 +83,22 @@ describe('ContainerCard', () => {
     expect(card).toHaveStyle({ borderColor: '#718096' });
   });
 
+  it('should use default border color for unknown status', () => {
+    const unknownContainer = { ...mockContainer, status: 'unknown' };
+
+    const { container } = render(
+      <ContainerCard
+        container={unknownContainer}
+        onOpenShell={mockOnOpenShell}
+        onContainerUpdate={mockOnContainerUpdate}
+      />
+    );
+
+    const card = container.querySelector('.MuiCard-root');
+    // Should fallback to 'stopped' color (#718096)
+    expect(card).toHaveStyle({ borderColor: '#718096' });
+  });
+
   it('should call useContainerActions with correct parameters', () => {
     render(
       <ContainerCard

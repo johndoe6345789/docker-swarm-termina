@@ -1,9 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '@/lib/store/authSlice';
 import LoginForm from '../LoginForm';
+import { apiClient } from '@/lib/api';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
@@ -111,5 +112,42 @@ describe('LoginForm', () => {
 
     const submitButton = screen.getByRole('button', { name: /logging in/i });
     expect(submitButton).toBeDisabled();
+  });
+
+  it('renders without shake animation by default', () => {
+    renderWithProvider(<LoginForm />);
+
+    // The component should render successfully
+    expect(screen.getByRole('button', { name: /access dashboard/i })).toBeInTheDocument();
+  });
+
+  it('handles form submission with failed login', async () => {
+    jest.useFakeTimers();
+
+    (apiClient.login as jest.Mock).mockResolvedValue({
+      success: false,
+      message: 'Invalid credentials',
+    });
+
+    renderWithProvider(<LoginForm />);
+
+    const usernameInput = screen.getByLabelText(/username/i);
+    const passwordInput = screen.getByLabelText(/password/i);
+    const submitButton = screen.getByRole('button', { name: /access dashboard/i });
+
+    fireEvent.change(usernameInput, { target: { value: 'wronguser' } });
+    fireEvent.change(passwordInput, { target: { value: 'wrongpass' } });
+    fireEvent.click(submitButton);
+
+    // Wait for error to appear
+    await waitFor(() => {
+      expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
+    });
+
+    // The shake animation should be triggered (isShaking: true)
+    // We can't directly test CSS animations, but we verify the component still renders
+    expect(screen.getByRole('button', { name: /access dashboard/i })).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 });
