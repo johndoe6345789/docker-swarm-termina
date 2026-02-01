@@ -63,12 +63,14 @@ WORKDIR /app
 COPY --from=test /app/.unit-tests-passed /tmp/.unit-tests-passed
 COPY --from=e2e-test /app/.e2e-tests-passed /tmp/.e2e-tests-passed
 
-COPY package*.json ./
-RUN npm ci --only=production
+# Copy built artifacts from e2e-test stage (already built with standalone mode)
+COPY --from=e2e-test /app/.next/standalone ./
+COPY --from=e2e-test /app/.next/static ./.next/static
+COPY --from=e2e-test /app/public ./public
 
-COPY . /app/
-RUN npm run build
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
