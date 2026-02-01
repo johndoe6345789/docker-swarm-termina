@@ -21,7 +21,7 @@ class TestContainerEndpoints:
         data = response.get_json()
         assert 'error' in data
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_get_containers_success(self, mock_get_client, client, auth_headers):
         """Test getting containers successfully"""
         # Mock Docker client
@@ -44,7 +44,7 @@ class TestContainerEndpoints:
         assert data['containers'][0]['id'] == 'abc123'
         assert data['containers'][0]['name'] == 'test-container'
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_get_containers_docker_unavailable(self, mock_get_client, client, auth_headers):
         """Test getting containers when Docker is unavailable"""
         mock_get_client.return_value = None
@@ -54,7 +54,7 @@ class TestContainerEndpoints:
         data = response.get_json()
         assert 'error' in data
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_start_container_success(self, mock_get_client, client, auth_headers):
         """Test starting a container"""
         mock_container = MagicMock()
@@ -68,7 +68,7 @@ class TestContainerEndpoints:
         assert data['success'] is True
         mock_container.start.assert_called_once()
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_stop_container_success(self, mock_get_client, client, auth_headers):
         """Test stopping a container"""
         mock_container = MagicMock()
@@ -82,7 +82,7 @@ class TestContainerEndpoints:
         assert data['success'] is True
         mock_container.stop.assert_called_once()
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_restart_container_success(self, mock_get_client, client, auth_headers):
         """Test restarting a container"""
         mock_container = MagicMock()
@@ -96,7 +96,7 @@ class TestContainerEndpoints:
         assert data['success'] is True
         mock_container.restart.assert_called_once()
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_remove_container_success(self, mock_get_client, client, auth_headers):
         """Test removing a container"""
         mock_container = MagicMock()

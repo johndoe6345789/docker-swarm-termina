@@ -9,7 +9,7 @@ class TestDockerClient:
     @patch('docker.from_env')
     def test_get_docker_client_success(self, mock_from_env):
         """Test successful Docker client connection"""
-        from app import get_docker_client
+        from utils.docker_client import get_docker_client
 
         mock_client = MagicMock()
         mock_client.ping.return_value = True
@@ -23,7 +23,7 @@ class TestDockerClient:
     @patch('docker.from_env')
     def test_get_docker_client_fallback_to_socket(self, mock_from_env, mock_docker_client):
         """Test fallback to Unix socket when from_env fails"""
-        from app import get_docker_client
+        from utils.docker_client import get_docker_client
 
         # Make from_env fail
         mock_from_env.side_effect = Exception("Connection failed")
@@ -41,7 +41,7 @@ class TestDockerClient:
     @patch('docker.from_env')
     def test_get_docker_client_all_methods_fail(self, mock_from_env, mock_docker_client):
         """Test when all Docker connection methods fail"""
-        from app import get_docker_client
+        from utils.docker_client import get_docker_client
 
         # Make both methods fail
         mock_from_env.side_effect = Exception("from_env failed")
@@ -56,7 +56,7 @@ class TestFormatUptime:
 
     def test_format_uptime_zero_minutes(self):
         """Test formatting for containers just started"""
-        from app import format_uptime
+        from utils.formatters import format_uptime
         from datetime import datetime, timezone, timedelta
 
         now = datetime.now(timezone.utc)
@@ -69,7 +69,7 @@ class TestFormatUptime:
 
     def test_format_uptime_exactly_one_day(self):
         """Test formatting for exactly 1 day"""
-        from app import format_uptime
+        from utils.formatters import format_uptime
         from datetime import datetime, timezone, timedelta
 
         now = datetime.now(timezone.utc)
@@ -81,7 +81,7 @@ class TestFormatUptime:
 
     def test_format_uptime_many_days(self):
         """Test formatting for many days"""
-        from app import format_uptime
+        from utils.formatters import format_uptime
         from datetime import datetime, timezone, timedelta
 
         now = datetime.now(timezone.utc)

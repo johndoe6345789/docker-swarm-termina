@@ -26,7 +26,7 @@ class TestEdgeCases:
         })
         assert response.status_code in [200, 401]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_containers_with_docker_error(self, mock_get_client, client, auth_headers):
         """Test containers endpoint when Docker returns unexpected error"""
         mock_client = MagicMock()
@@ -38,7 +38,7 @@ class TestEdgeCases:
         # Should return 500 or handle error
         assert response.status_code in [500, 200]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_exec_with_missing_fields(self, mock_get_client, client, auth_headers):
         """Test exec with missing command field"""
         mock_get_client.return_value = MagicMock()
@@ -50,7 +50,7 @@ class TestEdgeCases:
         # Should return 400 or handle error
         assert response.status_code in [400, 500]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_start_container_not_found(self, mock_get_client, client, auth_headers):
         """Test starting non-existent container"""
         from docker.errors import NotFound
@@ -64,7 +64,7 @@ class TestEdgeCases:
 
         assert response.status_code in [404, 500]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_stop_container_error(self, mock_get_client, client, auth_headers):
         """Test stopping container with error"""
         mock_client = MagicMock()
@@ -78,7 +78,7 @@ class TestEdgeCases:
 
         assert response.status_code in [500, 200]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_restart_container_error(self, mock_get_client, client, auth_headers):
         """Test restarting container with error"""
         mock_client = MagicMock()
@@ -92,7 +92,7 @@ class TestEdgeCases:
 
         assert response.status_code in [500, 200]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_remove_container_error(self, mock_get_client, client, auth_headers):
         """Test removing container with error"""
         mock_client = MagicMock()
@@ -121,7 +121,7 @@ class TestEdgeCases:
 
         assert response.status_code in [400, 401]
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_exec_with_empty_command(self, mock_get_client, client, auth_headers):
         """Test exec with empty command string"""
         mock_get_client.return_value = MagicMock()

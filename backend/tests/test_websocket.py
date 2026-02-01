@@ -24,7 +24,7 @@ class TestWebSocketHandlers:
         socketio_client.disconnect(namespace='/terminal')
         assert not socketio_client.is_connected('/terminal')
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_start_terminal_unauthorized(self, mock_get_client, socketio_client):
         """Test starting terminal without valid token"""
         socketio_client.emit('start_terminal', {
@@ -42,7 +42,7 @@ class TestWebSocketHandlers:
         # For testing purposes, we just verify the test didn't crash
         assert True
 
-    @patch('app.get_docker_client')
+    @patch('utils.docker_client.get_docker_client')
     def test_start_terminal_docker_unavailable(self, mock_get_client, socketio_client, auth_token):
         """Test starting terminal when Docker is unavailable"""
         mock_get_client.return_value = None
