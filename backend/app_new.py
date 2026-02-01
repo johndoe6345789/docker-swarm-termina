@@ -1,21 +1,14 @@
-"""Main application entry point - refactored modular architecture."""
+"""Main application entry point."""
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO
 
 from config import logger
-from routes.login import login_bp
-from routes.logout import logout_bp
+from routes.auth import auth_bp
+from routes.containers import containers_bp
 from routes.health import health_bp
-from routes.containers.list import list_bp
-from routes.containers.exec import exec_bp
-from routes.containers.start import start_bp
-from routes.containers.stop import stop_bp
-from routes.containers.restart import restart_bp
-from routes.containers.remove import remove_bp
-from handlers.terminal.register import register_terminal_handlers
-from utils.diagnostics.docker_env import diagnose_docker_environment
-from utils.docker_client import get_docker_client
+from handlers.terminal import register_terminal_handlers
+from utils.docker_client import diagnose_docker_environment, get_docker_client
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -33,15 +26,9 @@ socketio = SocketIO(
 )
 
 # Register blueprints
-app.register_blueprint(login_bp)
-app.register_blueprint(logout_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(containers_bp)
 app.register_blueprint(health_bp)
-app.register_blueprint(list_bp)
-app.register_blueprint(exec_bp)
-app.register_blueprint(start_bp)
-app.register_blueprint(stop_bp)
-app.register_blueprint(restart_bp)
-app.register_blueprint(remove_bp)
 
 # Register WebSocket handlers
 register_terminal_handlers(socketio)
