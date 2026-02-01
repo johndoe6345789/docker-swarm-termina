@@ -30,29 +30,55 @@ When making changes to components or functionality:
 
 3. **Verify tests pass** - You MUST verify tests before committing:
 
-   **If Docker is available:**
+   **Option A: Full Docker build (preferred - runs both unit + e2e tests):**
    ```bash
-   # Build the FULL frontend Docker image (runs unit tests + e2e tests)
    cd frontend && docker build -t frontend-test .
    ```
 
-   **If Docker is NOT available:**
+   Note: The Dockerfile runs e2e tests at line 55, but allows them to skip if backend services aren't running. The e2e tests WILL run in CI and WILL show failures even if they don't block the build.
+
+   **Option B: Local testing without Docker:**
    ```bash
    cd frontend
+
    # Step 1: Install dependencies
    npm ci
 
-   # Step 2: Run unit tests
+   # Step 2: Run unit tests (REQUIRED - must pass)
    npm test
 
-   # Step 3: Build the app (catches TypeScript/build errors)
+   # Step 3: Build the app (REQUIRED - must succeed)
    npm run build
 
-   # Step 4: Read e2e test files to verify your changes match expectations
-   cat e2e/login.spec.ts  # or relevant test file
+   # Step 4: Run e2e tests (RECOMMENDED if you can start the app)
+   # Terminal 1: Start the frontend
+   npm run dev
+
+   # Terminal 2: Run e2e tests
+   npx playwright install chromium --with-deps
+   npm run test:e2e
    ```
 
-4. **Only commit if tests pass** - If tests fail, fix the code, don't change the tests unless the tests are genuinely wrong
+   **Option C: Minimum verification (if Docker/local e2e not available):**
+   ```bash
+   cd frontend
+   npm ci          # Install dependencies
+   npm test        # Run unit tests - MUST PASS
+   npm run build   # Build app - MUST SUCCEED
+
+   # Manually verify e2e expectations by reading test files
+   cat e2e/login.spec.ts
+   cat e2e/dashboard.spec.ts
+   cat e2e/terminal.spec.ts
+
+   # Check your component changes match what the e2e tests expect:
+   # - Button text and labels (e.g., "Sign In" not "Access Dashboard")
+   # - Heading text (e.g., "Sign In" not "Container Shell")
+   # - Component roles and structure
+   # - User interaction flows
+   ```
+
+4. **Only commit if verification passes** - If unit tests fail or build fails, fix the code. If you can't run e2e tests, you MUST manually verify your changes match all e2e test expectations by carefully reading the test files.
 
 ### Common Mistakes to Avoid
 
