@@ -57,11 +57,11 @@ const { chromium } = require('playwright');
       return window._debugTerminal != null;
     }, { timeout: 10000 });
 
-    console.log('4. Injecting terminal output...');
+    console.log('4. Injecting terminal startup...');
     await page.evaluate(() => {
       const term = window._debugTerminal;
       if (term) {
-        console.log('Writing to xterm...');
+        console.log('Writing startup messages...');
         term.write('\x1b[0m\r\n');
         term.write('\x1b[1;32m*** Interactive Terminal Started ***\x1b[0m\r\n');
         term.write('You can now use sudo, nano, vim, and other interactive commands.\r\n\r\n');
@@ -69,7 +69,35 @@ const { chromium } = require('playwright');
       }
     });
 
-    console.log('5. Waiting for render...');
+    await page.waitForTimeout(500);
+
+    console.log('5. Simulating "ls -la" command...');
+    await page.evaluate(() => {
+      const term = window._debugTerminal;
+      if (term) {
+        // Simulate typing
+        term.write('ls -la\r\n');
+
+        // Simulate ls -la output with colors
+        term.write('total 48\r\n');
+        term.write('\x1b[1;34mdrwxr-xr-x\x1b[0m  8 root root 4096 Feb  1 03:17 \x1b[1;34m.\x1b[0m\r\n');
+        term.write('\x1b[1;34mdrwxr-xr-x\x1b[0m 12 root root 4096 Jan 28 10:42 \x1b[1;34m..\x1b[0m\r\n');
+        term.write('-rw-r--r--  1 root root  220 Jan  1  2024 .bashrc\r\n');
+        term.write('\x1b[1;34mdrwxr-xr-x\x1b[0m  2 root root 4096 Jan 15 14:23 \x1b[1;34mbin\x1b[0m\r\n');
+        term.write('\x1b[1;34mdrwxr-xr-x\x1b[0m  3 root root 4096 Jan 20 09:10 \x1b[1;34mconfig\x1b[0m\r\n');
+        term.write('-rw-r--r--  1 root root 1245 Jan 28 16:34 docker-compose.yml\r\n');
+        term.write('\x1b[1;34mdrwxr-xr-x\x1b[0m  5 root root 4096 Feb  1 03:17 \x1b[1;34mnode_modules\x1b[0m\r\n');
+        term.write('-rw-r--r--  1 root root 2891 Jan 30 11:22 package.json\r\n');
+        term.write('-rw-r--r--  1 root root 8234 Jan 30 11:22 package-lock.json\r\n');
+        term.write('-rw-r--r--  1 root root  523 Jan 15 08:45 README.md\r\n');
+        term.write('\x1b[1;34mdrwxr-xr-x\x1b[0m  4 root root 4096 Jan 25 13:56 \x1b[1;34msrc\x1b[0m\r\n');
+
+        // Show prompt again
+        term.write('\x1b[1;32mroot@ubuntu-container\x1b[0m:\x1b[1;34m/app\x1b[0m# ');
+      }
+    });
+
+    console.log('6. Waiting for render...');
     await page.waitForTimeout(1000);
 
     // Check status
