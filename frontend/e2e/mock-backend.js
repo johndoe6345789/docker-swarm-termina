@@ -88,6 +88,12 @@ const server = http.createServer((req, res) => {
       // Container operations
       const containerOpMatch = url.match(/^\/api\/containers\/([^\/]+)\/(start|stop|restart)$/);
       if (containerOpMatch && method === 'POST') {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
         const [, , operation] = containerOpMatch;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
