@@ -65,10 +65,10 @@ export default function LoginForm() {
               <LockOpen sx={{ fontSize: 32, color: 'secondary.main' }} />
             </Box>
             <Typography variant="h1" component="h1" gutterBottom>
-              Container Shell
+              Sign In
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Enter your credentials to access container management
+              Enter your credentials to access the dashboard
             </Typography>
           </Box>
 
@@ -111,7 +111,7 @@ export default function LoginForm() {
               sx={{ mb: 2 }}
               disabled={loading}
             >
-              {loading ? 'Logging in...' : 'Access Dashboard'}
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
 
             <Typography

@@ -16,7 +16,7 @@ describe('useContainerActions', () => {
 
   describe('handleStart', () => {
     it('should start container and show success', async () => {
-      mockApiClient.startContainer.mockResolvedValueOnce({ message: 'Started' });
+      mockApiClient.startContainer.mockResolvedValueOnce({ success: true, message: 'Started' });
 
       const { result } = renderHook(() => useContainerActions(containerId, mockOnUpdate));
 
@@ -50,7 +50,7 @@ describe('useContainerActions', () => {
 
   describe('handleStop', () => {
     it('should stop container and show success', async () => {
-      mockApiClient.stopContainer.mockResolvedValueOnce({ message: 'Stopped' });
+      mockApiClient.stopContainer.mockResolvedValueOnce({ success: true, message: 'Stopped' });
 
       const { result } = renderHook(() => useContainerActions(containerId, mockOnUpdate));
 
@@ -78,7 +78,7 @@ describe('useContainerActions', () => {
 
   describe('handleRestart', () => {
     it('should restart container and show success', async () => {
-      mockApiClient.restartContainer.mockResolvedValueOnce({ message: 'Restarted' });
+      mockApiClient.restartContainer.mockResolvedValueOnce({ success: true, message: 'Restarted' });
 
       const { result } = renderHook(() => useContainerActions(containerId, mockOnUpdate));
 
@@ -105,7 +105,7 @@ describe('useContainerActions', () => {
 
   describe('handleRemove', () => {
     it('should remove container and show success', async () => {
-      mockApiClient.removeContainer.mockResolvedValueOnce({ message: 'Removed' });
+      mockApiClient.removeContainer.mockResolvedValueOnce({ success: true, message: 'Removed' });
 
       const { result } = renderHook(() => useContainerActions(containerId, mockOnUpdate));
 
@@ -133,7 +133,7 @@ describe('useContainerActions', () => {
 
   describe('closeSnackbar', () => {
     it('should close snackbar', async () => {
-      mockApiClient.startContainer.mockResolvedValueOnce({ message: 'Started' });
+      mockApiClient.startContainer.mockResolvedValueOnce({ success: true, message: 'Started' });
 
       const { result } = renderHook(() => useContainerActions(containerId));
 

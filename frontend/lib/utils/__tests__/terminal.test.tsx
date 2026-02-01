@@ -1,4 +1,3 @@
-import React from 'react';
 import { render } from '@testing-library/react';
 import { formatPrompt, highlightCommand } from '../terminal';
 import { OutputLine } from '@/lib/interfaces/terminal';

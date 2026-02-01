@@ -6,7 +6,7 @@ import { useDashboard } from '@/lib/hooks/useDashboard';
 // Mock the hooks and components
 jest.mock('@/lib/hooks/useDashboard');
 jest.mock('@/components/Dashboard/DashboardHeader', () => {
-  return function DashboardHeader({ onRefresh, onLogout }: any) {
+  return function DashboardHeader({ onRefresh, onLogout }: { onRefresh: () => void; onLogout: () => void }) {
     return (
       <div data-testid="dashboard-header">
         <button onClick={onRefresh}>Refresh</button>
@@ -21,7 +21,7 @@ jest.mock('@/components/Dashboard/EmptyState', () => {
   };
 });
 jest.mock('@/components/ContainerCard', () => {
-  return function ContainerCard({ container, onOpenShell }: any) {
+  return function ContainerCard({ container, onOpenShell }: { container: { id: string; name: string }; onOpenShell: () => void }) {
     return (
       <div data-testid={`container-card-${container.id}`}>
         <span>{container.name}</span>
@@ -31,7 +31,7 @@ jest.mock('@/components/ContainerCard', () => {
   };
 });
 jest.mock('@/components/TerminalModal', () => {
-  return function TerminalModal({ open, containerName, onClose }: any) {
+  return function TerminalModal({ open, containerName, onClose }: { open: boolean; containerName: string; onClose: () => void }) {
     if (!open) return null;
     return (
       <div data-testid="terminal-modal">

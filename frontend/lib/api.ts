@@ -1,8 +1,17 @@
 import { triggerAuthError } from './store/authErrorHandler';
 
+// Type definition for window.__ENV__
+declare global {
+  interface Window {
+    __ENV__?: {
+      NEXT_PUBLIC_API_URL?: string;
+    };
+  }
+}
+
 export const API_BASE_URL =
-  typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_API_URL
-    ? (window as any).__ENV__.NEXT_PUBLIC_API_URL
+  typeof window !== 'undefined' && window.__ENV__?.NEXT_PUBLIC_API_URL
+    ? window.__ENV__.NEXT_PUBLIC_API_URL
     : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export interface Container {
@@ -22,6 +31,20 @@ export interface AuthResponse {
 
 export interface ContainersResponse {
   containers: Container[];
+}
+
+export interface CommandResponse {
+  success: boolean;
+  output?: string;
+  error?: string;
+  workdir?: string;
+  exit_code?: number;
+}
+
+export interface ContainerActionResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
 }
 
 class ApiClient {
@@ -117,7 +140,7 @@ class ApiClient {
     return data.containers;
   }
 
-  async executeCommand(containerId: string, command: string): Promise<any> {
+  async executeCommand(containerId: string, command: string): Promise<CommandResponse> {
     const token = this.getToken();
     if (!token) {
       triggerAuthError();
@@ -145,7 +168,7 @@ class ApiClient {
     return response.json();
   }
 
-  async startContainer(containerId: string): Promise<any> {
+  async startContainer(containerId: string): Promise<ContainerActionResponse> {
     const token = this.getToken();
     if (!token) {
       triggerAuthError();
@@ -172,7 +195,7 @@ class ApiClient {
     return response.json();
   }
 
-  async stopContainer(containerId: string): Promise<any> {
+  async stopContainer(containerId: string): Promise<ContainerActionResponse> {
     const token = this.getToken();
     if (!token) {
       triggerAuthError();
@@ -199,7 +222,7 @@ class ApiClient {
     return response.json();
   }
 
-  async restartContainer(containerId: string): Promise<any> {
+  async restartContainer(containerId: string): Promise<ContainerActionResponse> {
     const token = this.getToken();
     if (!token) {
       triggerAuthError();
@@ -226,7 +249,7 @@ class ApiClient {
     return response.json();
   }
 
-  async removeContainer(containerId: string): Promise<any> {
+  async removeContainer(containerId: string): Promise<ContainerActionResponse> {
     const token = this.getToken();
     if (!token) {
       triggerAuthError();
