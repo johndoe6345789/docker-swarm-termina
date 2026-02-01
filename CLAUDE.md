@@ -58,6 +58,13 @@ gh auth login
 
 **NEVER commit code without verifying it works with the existing tests.**
 
+**CRITICAL: You MUST keep working until ALL tests pass and coverage is maintained.**
+- ❌ Do NOT commit if ANY test fails
+- ❌ Do NOT commit if the build fails
+- ❌ Do NOT commit if coverage drops
+- ✅ Keep iterating and fixing until 100% of tests pass
+- ✅ Only commit when the FULL test suite passes
+
 ### Before Making Any Changes
 
 1. **Read the test files first** - Understand what the tests expect
@@ -135,7 +142,17 @@ When making changes to components or functionality:
    # - User interaction flows
    ```
 
-4. **Only commit if verification passes** - If unit tests fail or build fails, fix the code. If you can't run e2e tests, you MUST manually verify your changes match all e2e test expectations by carefully reading the test files.
+4. **Keep working until ALL tests pass**
+
+   **CRITICAL REQUIREMENT:**
+   - If ANY unit test fails → Fix the code and re-run until ALL pass
+   - If the build fails → Fix the code and re-run until it succeeds
+   - If ANY e2e test fails → Fix the code and re-run until ALL pass
+   - If you can't run e2e tests → Manually verify changes match ALL e2e expectations
+   - Do NOT commit partial fixes or "good enough" code
+   - ONLY commit when the FULL test suite passes (282/282 unit tests, 11/11 e2e tests)
+
+   **Your responsibility:** Keep iterating and fixing until you achieve 100% test success.
 
 ### Common Mistakes to Avoid
 
@@ -143,6 +160,10 @@ When making changes to components or functionality:
 - ❌ Modifying component structure without verifying e2e selectors
 - ❌ Assuming tests will adapt to your changes
 - ❌ Committing without running tests
+- ❌ Committing when ANY test fails (even if "most" tests pass)
+- ❌ Committing with the intention to "fix it later"
+- ❌ Stopping work when 9/11 e2e tests pass (you need 11/11!)
+- ❌ Thinking test failures are "acceptable" or "good enough"
 
 ### Test Structure
 
@@ -272,10 +293,20 @@ grep -r "getByRole\|getByText\|getByLabel" frontend/**/__tests__/
 
 1. ✅ **Read test files** to understand expectations
 2. ✅ **Make changes** matching what tests expect
-3. ✅ **Run unit tests**: `npm test` (must pass)
-4. ✅ **Run build**: `npm run build` (must succeed)
-5. ✅ **Run e2e tests**: `npm run test:e2e` (should pass)
-6. ✅ **Commit** only after all tests pass
-7. ✅ **Push** to designated branch
+3. ✅ **Run unit tests**: `npm test` → MUST show 282/282 passing
+4. ✅ **Run build**: `npm run build` → MUST succeed with no errors
+5. ✅ **Run e2e tests**: `npm run test:e2e` → MUST show 11/11 passing
+6. ✅ **Fix failures**: If ANY test fails, go back to step 2 and fix the code
+7. ✅ **Iterate**: Repeat steps 2-6 until 100% of tests pass
+8. ✅ **Commit**: ONLY after achieving full test suite success
+9. ✅ **Push**: To designated branch
 
-Remember: **Code that doesn't pass tests is broken code.** Always verify before committing.
+**Acceptance Criteria Before Committing:**
+- ✅ 282/282 unit tests passing (100%)
+- ✅ Build succeeds with zero errors
+- ✅ 11/11 e2e tests passing (100%)
+- ✅ No test coverage regression
+
+Remember: **Code that doesn't pass the FULL test suite is broken code.**
+
+**If tests fail, you MUST fix them before committing. No exceptions.**
