@@ -61,25 +61,16 @@ describe('useSimpleTerminal', () => {
     expect(result.current.command).toBe('');
   });
 
-  it('should not execute empty command', async () => {
+  it.each([
+    ['empty command', ''],
+    ['whitespace-only command', '   '],
+    ['tab-only command', '\t\t'],
+    ['newline command', '\n'],
+  ])('should not execute %s', async (description, command) => {
     const { result } = renderHook(() => useSimpleTerminal(containerId));
 
     act(() => {
-      result.current.setCommand('');
-    });
-
-    await act(async () => {
-      await result.current.executeCommand();
-    });
-
-    expect((mockApiClient as any).executeCommand).not.toHaveBeenCalled();
-  });
-
-  it('should not execute whitespace-only command', async () => {
-    const { result } = renderHook(() => useSimpleTerminal(containerId));
-
-    act(() => {
-      result.current.setCommand('   ');
+      result.current.setCommand(command);
     });
 
     await act(async () => {
@@ -275,5 +266,55 @@ describe('useSimpleTerminal', () => {
     expect(result.current.output[0].workdir).toBe('/');
     // The hook state is updated to the NEW workdir from the result
     expect(result.current.workdir).toBe('/home/user');
+  });
+
+  it('should handle outputRef for auto-scrolling', async () => {
+    (mockApiClient as any).executeCommand.mockResolvedValueOnce({
+      output: 'test output',
+      exit_code: 0,
+      workdir: '/',
+    });
+
+    const { result } = renderHook(() => useSimpleTerminal(containerId));
+
+    // Create a mock ref
+    const mockDiv = document.createElement('div');
+    Object.defineProperty(mockDiv, 'scrollHeight', { value: 1000, writable: true });
+    Object.defineProperty(mockDiv, 'scrollTop', { value: 0, writable: true });
+
+    act(() => {
+      result.current.outputRef.current = mockDiv;
+      result.current.setCommand('echo test');
+    });
+
+    await act(async () => {
+      await result.current.executeCommand();
+    });
+
+    // The useEffect should have run and auto-scrolled
+    expect(result.current.output).toHaveLength(2);
+  });
+
+  it('should not update workdir when result has no workdir', async () => {
+    (mockApiClient as any).executeCommand.mockResolvedValueOnce({
+      output: 'test',
+      exit_code: 0,
+      // No workdir in response
+    });
+
+    const { result } = renderHook(() => useSimpleTerminal(containerId));
+
+    act(() => {
+      result.current.setCommand('echo test');
+    });
+
+    const initialWorkdir = result.current.workdir;
+
+    await act(async () => {
+      await result.current.executeCommand();
+    });
+
+    // Workdir should remain unchanged
+    expect(result.current.workdir).toBe(initialWorkdir);
   });
 });

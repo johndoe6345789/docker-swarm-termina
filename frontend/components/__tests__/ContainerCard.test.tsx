@@ -55,48 +55,25 @@ describe('ContainerCard', () => {
     expect(screen.getByText('2 hours')).toBeInTheDocument();
   });
 
-  it('should show correct border color for running status', () => {
+  it.each([
+    ['running', '#38b2ac'],
+    ['stopped', '#718096'],
+    ['paused', '#ecc94b'],
+    ['exited', '#718096'], // fallback to stopped color
+    ['unknown', '#718096'], // fallback to stopped color
+  ])('should show correct border color for %s status', (status, expectedColor) => {
+    const containerWithStatus = { ...mockContainer, status };
+
     const { container } = render(
       <ContainerCard
-        container={mockContainer}
+        container={containerWithStatus}
         onOpenShell={mockOnOpenShell}
         onContainerUpdate={mockOnContainerUpdate}
       />
     );
 
     const card = container.querySelector('.MuiCard-root');
-    expect(card).toHaveStyle({ borderColor: '#38b2ac' });
-  });
-
-  it('should show correct border color for stopped status', () => {
-    const stoppedContainer = { ...mockContainer, status: 'stopped' };
-
-    const { container } = render(
-      <ContainerCard
-        container={stoppedContainer}
-        onOpenShell={mockOnOpenShell}
-        onContainerUpdate={mockOnContainerUpdate}
-      />
-    );
-
-    const card = container.querySelector('.MuiCard-root');
-    expect(card).toHaveStyle({ borderColor: '#718096' });
-  });
-
-  it('should use default border color for unknown status', () => {
-    const unknownContainer = { ...mockContainer, status: 'unknown' };
-
-    const { container } = render(
-      <ContainerCard
-        container={unknownContainer}
-        onOpenShell={mockOnOpenShell}
-        onContainerUpdate={mockOnContainerUpdate}
-      />
-    );
-
-    const card = container.querySelector('.MuiCard-root');
-    // Should fallback to 'stopped' color (#718096)
-    expect(card).toHaveStyle({ borderColor: '#718096' });
+    expect(card).toHaveStyle({ borderColor: expectedColor });
   });
 
   it('should call useContainerActions with correct parameters', () => {

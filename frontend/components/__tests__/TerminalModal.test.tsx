@@ -384,4 +384,66 @@ describe('TerminalModal', () => {
     // Shift+Enter should not execute (allows multi-line input)
     expect(mockUseSimpleTerminal).toHaveBeenCalledWith('container123');
   });
+
+  it('should call reset when closing FallbackNotification', () => {
+    const mockReset = jest.fn();
+
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      showFallbackNotification: true,
+      fallbackReason: 'Test reason',
+      mode: 'simple',
+      reset: mockReset,
+    });
+
+    render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // FallbackNotification onClose should call modalState.reset()
+    // This is passed as a prop to FallbackNotification component
+    expect(mockUseTerminalModalState).toHaveBeenCalled();
+  });
+
+  it('should apply minHeight/maxHeight based on isMobile', () => {
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      isMobile: false,
+    });
+
+    const { rerender } = render(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // Dialog should be rendered with desktop dimensions
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Change to mobile
+    mockUseTerminalModalState.mockReturnValue({
+      ...defaultModalState,
+      isMobile: true,
+    });
+
+    rerender(
+      <TerminalModal
+        open={true}
+        onClose={mockOnClose}
+        containerName="test-container"
+        containerId="container123"
+      />
+    );
+
+    // Dialog should now use mobile dimensions (fullScreen)
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
 });

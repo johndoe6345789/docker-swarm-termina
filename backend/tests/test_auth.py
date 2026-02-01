@@ -30,21 +30,17 @@ class TestAuthentication:
         assert data['success'] is False
         assert 'message' in data
 
-    def test_login_missing_username(self, client):
-        """Test login with missing username"""
-        response = client.post('/api/auth/login', json={
-            'password': 'admin123'
-        })
-
-        assert response.status_code == 401
-        data = response.get_json()
-        assert data['success'] is False
-
-    def test_login_missing_password(self, client):
-        """Test login with missing password"""
-        response = client.post('/api/auth/login', json={
-            'username': 'admin'
-        })
+    @pytest.mark.parametrize("payload,description", [
+        ({'password': 'admin123'}, 'missing username'),
+        ({'username': 'admin'}, 'missing password'),
+        ({}, 'missing both username and password'),
+        ({'username': ''}, 'empty username'),
+        ({'password': ''}, 'empty password'),
+        ({'username': '', 'password': ''}, 'both fields empty'),
+    ])
+    def test_login_missing_or_empty_fields(self, client, payload, description):
+        """Test login with missing or empty fields"""
+        response = client.post('/api/auth/login', json=payload)
 
         assert response.status_code == 401
         data = response.get_json()

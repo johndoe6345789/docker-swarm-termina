@@ -10,10 +10,15 @@ describe('DashboardHeader', () => {
     jest.clearAllMocks();
   });
 
-  it('should render container count on desktop', () => {
+  it.each([
+    [0, /0 active containers/i],
+    [1, /1 active container/i],
+    [5, /5 active containers/i],
+    [42, /42 active containers/i],
+  ])('should render %i containers with correct pluralization on desktop', (count, expectedText) => {
     render(
       <DashboardHeader
-        containerCount={5}
+        containerCount={count}
         isMobile={false}
         isRefreshing={false}
         onRefresh={mockOnRefresh}
@@ -21,21 +26,7 @@ describe('DashboardHeader', () => {
       />
     );
 
-    expect(screen.getByText(/5 active containers/i)).toBeInTheDocument();
-  });
-
-  it('should render singular "container" for count of 1 on desktop', () => {
-    render(
-      <DashboardHeader
-        containerCount={1}
-        isMobile={false}
-        isRefreshing={false}
-        onRefresh={mockOnRefresh}
-        onLogout={mockOnLogout}
-      />
-    );
-
-    expect(screen.getByText(/1 active container/i)).toBeInTheDocument();
+    expect(screen.getByText(expectedText)).toBeInTheDocument();
   });
 
   it('should not show container count on mobile', () => {

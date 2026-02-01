@@ -54,47 +54,30 @@ class TestContainerEndpoints:
         data = response.get_json()
         assert 'error' in data
 
+    @pytest.mark.parametrize("action,method,container_method,extra_kwargs", [
+        ('start', 'post', 'start', {}),
+        ('stop', 'post', 'stop', {}),
+        ('restart', 'post', 'restart', {}),
+    ])
     @patch('utils.container_helpers.get_docker_client')
-    def test_start_container_success(self, mock_get_client, client, auth_headers):
-        """Test starting a container"""
+    def test_container_action_success(self, mock_get_client, client, auth_headers, action, method, container_method, extra_kwargs):
+        """Test container actions (start, stop, restart)"""
         mock_container = MagicMock()
         mock_client = MagicMock()
         mock_client.containers.get.return_value = mock_container
         mock_get_client.return_value = mock_client
 
-        response = client.post('/api/containers/abc123/start', headers=auth_headers)
+        response = getattr(client, method)(f'/api/containers/abc123/{action}', headers=auth_headers)
         assert response.status_code == 200
         data = response.get_json()
         assert data['success'] is True
-        mock_container.start.assert_called_once()
 
-    @patch('utils.container_helpers.get_docker_client')
-    def test_stop_container_success(self, mock_get_client, client, auth_headers):
-        """Test stopping a container"""
-        mock_container = MagicMock()
-        mock_client = MagicMock()
-        mock_client.containers.get.return_value = mock_container
-        mock_get_client.return_value = mock_client
-
-        response = client.post('/api/containers/abc123/stop', headers=auth_headers)
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data['success'] is True
-        mock_container.stop.assert_called_once()
-
-    @patch('utils.container_helpers.get_docker_client')
-    def test_restart_container_success(self, mock_get_client, client, auth_headers):
-        """Test restarting a container"""
-        mock_container = MagicMock()
-        mock_client = MagicMock()
-        mock_client.containers.get.return_value = mock_container
-        mock_get_client.return_value = mock_client
-
-        response = client.post('/api/containers/abc123/restart', headers=auth_headers)
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data['success'] is True
-        mock_container.restart.assert_called_once()
+        # Verify the correct container method was called
+        container_action = getattr(mock_container, container_method)
+        if extra_kwargs:
+            container_action.assert_called_once_with(**extra_kwargs)
+        else:
+            container_action.assert_called_once()
 
     @patch('utils.container_helpers.get_docker_client')
     def test_remove_container_success(self, mock_get_client, client, auth_headers):
