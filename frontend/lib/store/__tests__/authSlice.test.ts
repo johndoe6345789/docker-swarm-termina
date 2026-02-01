@@ -11,14 +11,17 @@ import * as apiClient from '@/lib/api';
 jest.mock('@/lib/api');
 
 describe('authSlice', () => {
-  let store: ReturnType<typeof configureStore>;
+  type TestStore = ReturnType<typeof createTestStore>;
+  let store: TestStore;
+
+  const createTestStore = () => configureStore({
+    reducer: {
+      auth: authReducer,
+    },
+  });
 
   beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        auth: authReducer,
-      },
-    });
+    store = createTestStore();
     jest.clearAllMocks();
     localStorage.clear();
   });
