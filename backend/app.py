@@ -22,6 +22,8 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize SocketIO
+# Note: Frontend uses polling-only transport due to Cloudflare/reverse proxy
+# blocking WebSocket connections. Server supports both transports.
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",

@@ -58,4 +58,34 @@ describe('useTerminalModal', () => {
     });
     expect(result.current.selectedContainer).toEqual(container2);
   });
+
+  it('clears selected container after 300ms when closed', () => {
+    jest.useFakeTimers();
+
+    const { result } = renderHook(() => useTerminalModal());
+    const mockContainer = { id: '123', name: 'test-container' } as any;
+
+    act(() => {
+      result.current.openTerminal(mockContainer);
+    });
+
+    expect(result.current.selectedContainer).toEqual(mockContainer);
+
+    act(() => {
+      result.current.closeTerminal();
+    });
+
+    // selectedContainer should still exist immediately after closing
+    expect(result.current.selectedContainer).toEqual(mockContainer);
+
+    // Fast-forward 300ms
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    // selectedContainer should now be null
+    expect(result.current.selectedContainer).toBeNull();
+
+    jest.useRealTimers();
+  });
 });

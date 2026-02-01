@@ -114,9 +114,10 @@ export function useInteractiveTerminal({
           (window as any)._debugTerminal = term;
         }
 
-        const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
-        socket = io(`${wsUrl}/terminal`, {
-          transports: ['polling', 'websocket'],
+        // Use polling only - WebSocket is blocked by Cloudflare/reverse proxy
+        // This prevents "Invalid frame header" errors during upgrade attempts
+        socket = io(`${API_BASE_URL}/terminal`, {
+          transports: ['polling'],
           reconnectionDelayMax: 10000,
           timeout: 60000,
           forceNew: true,

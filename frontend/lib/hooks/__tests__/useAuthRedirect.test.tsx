@@ -9,7 +9,7 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-const createMockStore = (isAuthenticated: boolean) =>
+const createMockStore = (isAuthenticated: boolean, loading = false) =>
   configureStore({
     reducer: {
       auth: authReducer,
@@ -17,7 +17,7 @@ const createMockStore = (isAuthenticated: boolean) =>
     preloadedState: {
       auth: {
         isAuthenticated,
-        loading: false,
+        loading,
         username: isAuthenticated ? 'testuser' : null,
         error: null,
       },
@@ -63,6 +63,17 @@ describe('useAuthRedirect', () => {
     );
 
     renderHook(() => useAuthRedirect('/'), { wrapper });
+
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('does not redirect when loading is true', () => {
+    const store = createMockStore(false, true);
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    );
+
+    renderHook(() => useAuthRedirect('/dashboard'), { wrapper });
 
     expect(mockPush).not.toHaveBeenCalled();
   });

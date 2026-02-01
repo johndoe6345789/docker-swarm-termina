@@ -4,6 +4,7 @@ import authReducer, {
   logout,
   initAuth,
   setUnauthenticated,
+  clearError,
 } from '../authSlice';
 import * as apiClient from '@/lib/api';
 
@@ -34,12 +35,28 @@ describe('authSlice', () => {
     });
   });
 
+  describe('clearError', () => {
+    it('clears error state', () => {
+      // Set error first
+      store.dispatch({ type: 'auth/login/rejected', payload: 'Login failed' });
+      expect(store.getState().auth.error).toBeTruthy();
+
+      store.dispatch(clearError());
+      expect(store.getState().auth.error).toBeNull();
+    });
+  });
+
   describe('setUnauthenticated', () => {
     it('sets auth state to unauthenticated', () => {
       store.dispatch(setUnauthenticated());
       const state = store.getState().auth;
       expect(state.isAuthenticated).toBe(false);
       expect(state.username).toBeNull();
+    });
+
+    it('calls apiClient.setToken with null', () => {
+      store.dispatch(setUnauthenticated());
+      expect(apiClient.apiClient.setToken).toHaveBeenCalledWith(null);
     });
   });
 
@@ -56,9 +73,45 @@ describe('authSlice', () => {
       expect(state.loading).toBe(false);
     });
 
-    it('handles login failure', async () => {
+    it('handles successful login without username in response', async () => {
+      const mockLoginResponse = { success: true, token: 'test-token' };
+      (apiClient.apiClient.login as jest.Mock).mockResolvedValue(mockLoginResponse);
+
+      await store.dispatch(login({ username: 'inputuser', password: 'password' }));
+
+      const state = store.getState().auth;
+      expect(state.isAuthenticated).toBe(true);
+      // Should fall back to provided username
+      expect(state.username).toBe('inputuser');
+      expect(state.loading).toBe(false);
+    });
+
+    it('handles login failure with custom message', async () => {
+      const mockLoginResponse = { success: false, message: 'Invalid credentials' };
+      (apiClient.apiClient.login as jest.Mock).mockResolvedValue(mockLoginResponse);
+
+      await store.dispatch(login({ username: 'testuser', password: 'wrong' }));
+
+      const state = store.getState().auth;
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.username).toBeNull();
+      expect(state.loading).toBe(false);
+      expect(state.error).toBe('Invalid credentials');
+    });
+
+    it('handles login failure without custom message', async () => {
+      const mockLoginResponse = { success: false };
+      (apiClient.apiClient.login as jest.Mock).mockResolvedValue(mockLoginResponse);
+
+      await store.dispatch(login({ username: 'testuser', password: 'wrong' }));
+
+      const state = store.getState().auth;
+      expect(state.error).toBe('Login failed');
+    });
+
+    it('handles network error during login', async () => {
       (apiClient.apiClient.login as jest.Mock).mockRejectedValue(
-        new Error('Invalid credentials')
+        new Error('Network error')
       );
 
       await store.dispatch(login({ username: 'testuser', password: 'wrong' }));
@@ -67,7 +120,7 @@ describe('authSlice', () => {
       expect(state.isAuthenticated).toBe(false);
       expect(state.username).toBeNull();
       expect(state.loading).toBe(false);
-      expect(state.error).toBeTruthy();
+      expect(state.error).toBe('Login failed. Please try again.');
     });
 
     it('sets loading state during login', () => {
@@ -91,6 +144,25 @@ describe('authSlice', () => {
       const state = store.getState().auth;
       expect(state.isAuthenticated).toBe(false);
       expect(state.username).toBeNull();
+    });
+
+    it('clears authentication state even when logout fails', async () => {
+      // First login
+      store.dispatch({
+        type: 'auth/login/fulfilled',
+        payload: { username: 'testuser' },
+      });
+
+      (apiClient.apiClient.logout as jest.Mock).mockRejectedValue(
+        new Error('Network error')
+      );
+
+      await store.dispatch(logout());
+
+      const state = store.getState().auth;
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.username).toBeNull();
+      expect(state.loading).toBe(false);
     });
   });
 
@@ -127,6 +199,19 @@ describe('authSlice', () => {
       await store.dispatch(initAuth());
 
       const state = store.getState().auth;
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.username).toBeNull();
+    });
+
+    it('handles initAuth rejection', async () => {
+      (apiClient.apiClient.getToken as jest.Mock).mockImplementation(() => {
+        throw new Error('Storage error');
+      });
+
+      await store.dispatch(initAuth());
+
+      const state = store.getState().auth;
+      expect(state.loading).toBe(false);
       expect(state.isAuthenticated).toBe(false);
       expect(state.username).toBeNull();
     });
