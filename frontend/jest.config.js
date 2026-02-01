@@ -7,6 +7,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
+  testTimeout: 60000,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
@@ -27,6 +28,7 @@ const customJestConfig = {
     '!**/node_modules/**',
     '!**/.next/**',
   ],
+  maxWorkers: process.env.CI ? 2 : '50%',
 }
 
 module.exports = createJestConfig(customJestConfig)
