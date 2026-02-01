@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 class TestExecAdvanced:
     """Advanced tests for command execution"""
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_bash_fallback_to_sh(self, mock_get_client, client, auth_headers, auth_token):
         """Test fallback from bash to sh when bash doesn't exist"""
         # Mock exec that fails for bash but succeeds for sh
@@ -33,7 +33,7 @@ class TestExecAdvanced:
         data = response.get_json()
         assert data['exit_code'] == 0
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_container_not_found(self, mock_get_client, client, auth_headers):
         """Test exec on non-existent container"""
         mock_client = MagicMock()
@@ -48,7 +48,7 @@ class TestExecAdvanced:
         data = response.get_json()
         assert 'error' in data
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_preserves_working_directory(self, mock_get_client, client, auth_headers, auth_token):
         """Test that working directory is preserved across commands"""
         mock_exec_result = MagicMock()
@@ -76,7 +76,7 @@ class TestExecAdvanced:
                                 json={'command': 'ls'})
         assert response2.status_code == 200
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_cd_with_tilde(self, mock_get_client, client, auth_headers, auth_token):
         """Test cd command with tilde expansion"""
         mock_exec_result = MagicMock()
@@ -98,7 +98,7 @@ class TestExecAdvanced:
         data = response.get_json()
         assert data['workdir'] == '/home/user'
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_cd_no_args(self, mock_get_client, client, auth_headers, auth_token):
         """Test cd command without arguments (should go to home)"""
         mock_exec_result = MagicMock()
@@ -122,7 +122,7 @@ class TestExecAdvanced:
         # workdir should be extracted from ::WORKDIR:: marker
         assert data['workdir'] == '/'
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_latin1_encoding_fallback(self, mock_get_client, client, auth_headers, auth_token):
         """Test fallback to latin-1 encoding for non-UTF-8 output"""
         # Create binary data that's not valid UTF-8
@@ -149,7 +149,7 @@ class TestExecAdvanced:
         assert data['exit_code'] == 0
         assert 'output' in data
 
-    @patch('utils.docker_client.get_docker_client')
+    @patch('routes.containers.exec.get_docker_client')
     def test_exec_empty_command(self, mock_get_client, client, auth_headers, auth_token):
         """Test exec with empty/no command"""
         mock_exec_result = MagicMock()
