@@ -1,86 +1,162 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, Divider, Snackbar, Alert } from '@mui/material';
-import { ContainerCardProps } from '@/lib/interfaces/container';
-import { useContainerActions } from '@/lib/hooks/useContainerActions';
-import ContainerHeader from './ContainerCard/ContainerHeader';
-import ContainerInfo from './ContainerCard/ContainerInfo';
-import ContainerActions from './ContainerCard/ContainerActions';
-import DeleteConfirmDialog from './ContainerCard/DeleteConfirmDialog';
+import React from 'react';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Box,
+  Chip,
+  Divider,
+} from '@metabuilder/components/m3';
+import { TerminalIcon, PlayArrow, Inventory2 } from '@metabuilder/components/m3';
+import { Container } from '@/lib/api';
 
-const borderColors = {
-  running: '#38b2ac',
-  stopped: '#718096',
-  paused: '#ecc94b',
-  exited: '#718096',
-  created: '#4299e1',
-};
+interface ContainerCardProps {
+  container: Container;
+  onOpenShell: () => void;
+}
 
-export default function ContainerCard({ container, onOpenShell, onContainerUpdate }: ContainerCardProps) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const {
-    isLoading,
-    snackbar,
-    handleStart,
-    handleStop,
-    handleRestart,
-    handleRemove,
-    closeSnackbar,
-  } = useContainerActions(container.id, onContainerUpdate);
+export default function ContainerCard({ container, onOpenShell }: ContainerCardProps) {
+  const statusColors = {
+    running: 'success',
+    stopped: 'default',
+    paused: 'warning',
+  } as const;
 
-  const confirmRemove = () => {
-    setShowDeleteDialog(false);
-    handleRemove();
+  const borderColors = {
+    running: '#38b2ac',
+    stopped: '#718096',
+    paused: '#ecc94b',
   };
 
   return (
     <Card
-      data-testid="container-card"
       sx={{
         borderLeft: 4,
         borderColor: borderColors[container.status as keyof typeof borderColors] || borderColors.stopped,
       }}
     >
       <CardContent>
-        <ContainerHeader
-          name={container.name}
-          image={container.image}
-          status={container.status}
-        />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flex: 1 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                background: 'rgba(56, 178, 172, 0.1)',
+                borderRadius: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Inventory2 style={{ color: 'var(--primary)', fontSize: 20 }} />
+            </Box>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography
+                variant="h3"
+                component="h3"
+                sx={{
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontWeight: 500,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {container.name}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {container.image}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Chip
+            label={container.status}
+            color={statusColors[container.status as keyof typeof statusColors] || 'default'}
+            size="small"
+            icon={container.status === 'running' ? <PlayArrow style={{ fontSize: 12 }} /> : undefined}
+            sx={{
+              fontFamily: '"JetBrains Mono", monospace',
+              textTransform: 'capitalize',
+            }}
+          />
+        </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        <ContainerInfo id={container.id} uptime={container.uptime} />
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
+          <Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                display: 'block',
+                mb: 0.5,
+              }}
+            >
+              Container ID
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ fontFamily: '"JetBrains Mono", monospace' }}
+            >
+              {container.id}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                display: 'block',
+                mb: 0.5,
+              }}
+            >
+              Uptime
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ fontFamily: '"JetBrains Mono", monospace' }}
+            >
+              {container.uptime}
+            </Typography>
+          </Box>
+        </Box>
 
-        <ContainerActions
-          status={container.status}
-          isLoading={isLoading}
-          onStart={handleStart}
-          onStop={handleStop}
-          onRestart={handleRestart}
-          onRemove={() => setShowDeleteDialog(true)}
-          onOpenShell={onOpenShell}
-        />
+        <Button
+          fullWidth
+          variant="contained"
+          color="primary"
+          onClick={onOpenShell}
+          disabled={container.status !== 'running'}
+          startIcon={<TerminalIcon />}
+          sx={{
+            fontWeight: 500,
+            '&:hover': {
+              backgroundColor: 'secondary.main',
+            },
+          }}
+        >
+          Open Shell
+        </Button>
       </CardContent>
-
-      <DeleteConfirmDialog
-        open={showDeleteDialog}
-        containerName={container.name}
-        onClose={() => setShowDeleteDialog(false)}
-        onConfirm={confirmRemove}
-      />
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={closeSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Card>
   );
 }

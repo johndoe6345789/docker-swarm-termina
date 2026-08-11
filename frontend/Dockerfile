@@ -1,76 +1,82 @@
-# Test stage - run unit tests with coverage
-FROM node:20-slim AS test
+# Multi-stage prod build for dockerterminal UI — monorepo-aware.
+# Context: monorepo root (../..). Mirrors the codegen build so the
+# @metabuilder/components (M3) workspace resolves and transpiles.
+# Requires: metabuilder/base-node-deps:latest
 
+# --- Build stage ---
+ARG BASE_REGISTRY=metabuilder
+FROM ${BASE_REGISTRY}/base-node-deps:latest AS builder
+
+ARG NEXT_PUBLIC_API_URL=/terminal-api
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# Browser-reachable DBAL origin for the OIDC PKCE dance, same relative-path
+# convention as pastebin/codegen/nextjs's build args.
+ARG NEXT_PUBLIC_DBAL_OIDC_BASE_URL=/api/dbal
+ARG NEXT_PUBLIC_DBAL_OIDC_CLIENT_ID=dockerterminal-web
+ENV NEXT_PUBLIC_DBAL_OIDC_BASE_URL=${NEXT_PUBLIC_DBAL_OIDC_BASE_URL}
+ENV NEXT_PUBLIC_DBAL_OIDC_CLIENT_ID=${NEXT_PUBLIC_DBAL_OIDC_CLIENT_ID}
+
+COPY package.json .npmrc ./
+
+# Shared workspace libraries (same set as codegen so M3 + its transitive
+# deps resolve). Copied before source so this layer caches well.
+COPY libraries/types/        ./libraries/types/
+COPY libraries/interfaces/   ./libraries/interfaces/
+COPY libraries/hooks/        ./libraries/hooks/
+COPY libraries/icons/        ./libraries/icons/
+COPY libraries/scss/         ./libraries/scss/
+COPY libraries/translations/ ./libraries/translations/
+COPY libraries/components/   ./libraries/components/
+COPY libraries/workflow/     ./libraries/workflow/
+COPY libraries/redux/dbal-sso/     ./libraries/redux/dbal-sso/
+COPY libraries/redux/core/         ./libraries/redux/core/
+COPY libraries/redux/slices/       ./libraries/redux/slices/
+COPY libraries/redux/hooks/        ./libraries/redux/hooks/
+COPY libraries/redux/adapters/     ./libraries/redux/adapters/
+COPY libraries/redux/api-clients/  ./libraries/redux/api-clients/
+COPY libraries/redux/core-hooks/   ./libraries/redux/core-hooks/
+COPY libraries/redux/hooks-async/  ./libraries/redux/hooks-async/
+COPY libraries/redux/hooks-auth/   ./libraries/redux/hooks-auth/
+COPY libraries/redux/hooks-canvas/ ./libraries/redux/hooks-canvas/
+COPY libraries/redux/hooks-data/   ./libraries/redux/hooks-data/
+COPY libraries/redux/hooks-forms/  ./libraries/redux/hooks-forms/
+COPY libraries/redux/hooks-utils/  ./libraries/redux/hooks-utils/
+COPY libraries/redux/middleware/   ./libraries/redux/middleware/
+COPY libraries/redux/persist/      ./libraries/redux/persist/
+COPY libraries/redux/services/     ./libraries/redux/services/
+COPY libraries/redux/timing-utils/ ./libraries/redux/timing-utils/
+
+# Docker terminal UI source
+COPY frontends/dockerterminal/frontend/ ./frontends/dockerterminal/frontend/
+
+RUN npm install --ignore-scripts
+
+RUN for ws in libraries/redux/core libraries/redux/slices \
+    libraries/redux/hooks libraries/redux/adapters \
+    libraries/redux/hooks-async libraries/redux/api-clients \
+    libraries/redux/persist libraries/components libraries/workflow; do \
+    npm run build -w "$ws" --if-present 2>&1 || { echo "ERROR: $ws build failed"; exit 1; }; \
+done
+
+RUN cd frontends/dockerterminal/frontend && npx next build --turbopack
+
+# --- Runtime stage ---
+FROM node:24-alpine
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY package*.json ./
-RUN npm ci
+COPY --from=builder /app/frontends/dockerterminal/frontend/.next/standalone ./
+COPY --from=builder /app/frontends/dockerterminal/frontend/.next/static ./frontends/dockerterminal/frontend/.next/static
+COPY --from=builder /app/frontends/dockerterminal/frontend/public ./frontends/dockerterminal/frontend/public
 
-# Copy source code
-COPY . .
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Run unit tests with coverage and create marker
-RUN npm run test:coverage && touch /app/.unit-tests-passed
+EXPOSE 3000
 
-# E2E test stage - run Playwright tests
-FROM node:20-slim AS e2e-test
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://127.0.0.1:3000/terminal || exit 1
 
-WORKDIR /app
-
-# Install system dependencies for Playwright browsers
-RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libnspr4 \
-    libdbus-1-3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libpango-1.0-0 \
-    libcairo2 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy package files
-COPY package*.json ./
-RUN npm ci
-
-# Install Playwright and browsers
-RUN npx playwright install chromium --with-deps
-
-# Copy source code
-COPY . .
-
-# Build the app for e2e testing
-RUN npm run build
-
-# Run e2e tests (non-blocking in CI as requires running backend)
-RUN (npm run test:e2e || echo "E2E tests skipped (requires running services)") && touch /app/.e2e-tests-passed
-
-# Production stage
-FROM node:20-slim AS production
-
-WORKDIR /app
-
-# Copy test markers to ensure tests ran (creates dependency on test stages)
-COPY --from=test /app/.unit-tests-passed /tmp/.unit-tests-passed
-COPY --from=e2e-test /app/.e2e-tests-passed /tmp/.e2e-tests-passed
-
-# Copy built artifacts from e2e-test stage (already built with standalone mode)
-COPY --from=e2e-test /app/.next/standalone ./
-COPY --from=e2e-test /app/.next/static ./.next/static
-COPY --from=e2e-test /app/public ./public
-
-# Copy entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-ENTRYPOINT ["/app/entrypoint.sh"]
+WORKDIR /app/frontends/dockerterminal/frontend
 CMD ["node", "server.js"]

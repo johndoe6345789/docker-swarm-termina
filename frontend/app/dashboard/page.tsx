@@ -1,29 +1,87 @@
 'use client';
 
-import { Box, Container, Typography, Grid, CircularProgress } from '@mui/material';
-import { useDashboard } from '@/lib/hooks/useDashboard';
-import DashboardHeader from '@/components/Dashboard/DashboardHeader';
-import EmptyState from '@/components/Dashboard/EmptyState';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Box,
+  Container,
+  Typography,
+  Button,
+  Grid,
+  AppBar,
+  Toolbar,
+  IconButton,
+  CircularProgress,
+  Refresh,
+  Logout,
+  Inventory2,
+} from '@metabuilder/components/m3';
+import { useAuth } from '@/lib/auth';
+import { apiClient, Container as ContainerType } from '@/lib/api';
 import ContainerCard from '@/components/ContainerCard';
 import TerminalModal from '@/components/TerminalModal';
 
 export default function Dashboard() {
-  const {
-    containers,
-    isRefreshing,
-    error,
-    refreshContainers,
-    selectedContainer,
-    isTerminalOpen,
-    openTerminal,
-    closeTerminal,
-    isMobile,
-    isInitialLoading,
-    showEmptyState,
-    handleLogout,
-  } = useDashboard();
+  const { isAuthenticated, loading: authLoading, logout } = useAuth();
+  const router = useRouter();
+  const [containers, setContainers] = useState<ContainerType[]>([]);
+  const [selectedContainer, setSelectedContainer] = useState<ContainerType | null>(null);
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  if (isInitialLoading) {
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  const fetchContainers = async () => {
+    setIsRefreshing(true);
+    setError('');
+    try {
+      const data = await apiClient.getContainers();
+      setContainers(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch containers');
+      if (err instanceof Error && err.message === 'Session expired') {
+        router.push('/');
+      }
+    } finally {
+      setIsRefreshing(false);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchContainers();
+      const interval = setInterval(fetchContainers, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const handleOpenShell = (container: ContainerType) => {
+    setSelectedContainer(container);
+    setIsTerminalOpen(true);
+  };
+
+  const handleCloseTerminal = () => {
+    setIsTerminalOpen(false);
+    setTimeout(() => setSelectedContainer(null), 300);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
+
+  const handleRefresh = () => {
+    fetchContainers();
+  };
+
+  if (authLoading || isLoading) {
     return (
       <Box
         sx={{
@@ -40,31 +98,112 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
-      <DashboardHeader
-        containerCount={containers.length}
-        isMobile={isMobile}
-        isRefreshing={isRefreshing}
-        onRefresh={refreshContainers}
-        onLogout={handleLogout}
-      />
+      <AppBar
+        position="sticky"
+        sx={{
+          backgroundColor: 'rgba(45, 55, 72, 0.5)',
+          backdropFilter: 'blur(8px)',
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Toolbar>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                background: 'rgba(56, 178, 172, 0.1)',
+                borderRadius: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Inventory2 style={{ color: 'var(--primary)' }} />
+            </Box>
+            <Box>
+              <Typography
+                variant="h1"
+                sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '1.5rem' }}
+              >
+                Container Shell
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {containers.length} active {containers.length === 1 ? 'container' : 'containers'}
+              </Typography>
+            </Box>
+          </Box>
 
-      <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              startIcon={isRefreshing ? <CircularProgress size={16} /> : <Refresh />}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleLogout}
+              startIcon={<Logout />}
+            >
+              Logout
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         {error && (
           <Box sx={{ mb: 2, p: 2, bgcolor: 'error.dark', borderRadius: 1 }}>
             <Typography color="error.contrastText">{error}</Typography>
           </Box>
         )}
 
-        {showEmptyState ? (
-          <EmptyState />
+        {containers.length === 0 && !isLoading ? (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 400,
+              textAlign: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                backgroundColor: 'action.hover',
+                borderRadius: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <Inventory2 style={{ fontSize: 40, color: 'var(--secondary)' }} />
+            </Box>
+            <Typography variant="h2" gutterBottom>
+              No Active Containers
+            </Typography>
+            <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
+              There are currently no running containers to display. Start a container to see it
+              appear here.
+            </Typography>
+          </Box>
         ) : (
           <Grid container spacing={3}>
             {containers.map((container) => (
-              <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={container.id}>
+              <Grid item xs={12} sm={6} lg={4} key={container.id}>
                 <ContainerCard
                   container={container}
-                  onOpenShell={() => openTerminal(container)}
-                  onContainerUpdate={refreshContainers}
+                  onOpenShell={() => handleOpenShell(container)}
                 />
               </Grid>
             ))}
@@ -75,7 +214,7 @@ export default function Dashboard() {
       {selectedContainer && (
         <TerminalModal
           open={isTerminalOpen}
-          onClose={closeTerminal}
+          onClose={handleCloseTerminal}
           containerName={selectedContainer.name}
           containerId={selectedContainer.id}
         />
