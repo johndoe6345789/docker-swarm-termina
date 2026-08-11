@@ -46,9 +46,22 @@ ENV/
 *.egg-info/
 .pytest_cache/
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache
+
 # Next.js
 .next/
 out/
 build/
 .vercel
+
+# CapRover releases (keep README)
+releases/*.tar
+releases/*.tar.gz
+releases/checksums-*.txt
+releases/DEPLOYMENT-*.txt
 

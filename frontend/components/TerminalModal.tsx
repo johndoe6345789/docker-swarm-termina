@@ -1,28 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Box,
-  Typography,
-  IconButton,
-  Paper,
-  Close,
-  Send,
-} from '@metabuilder/components/m3';
-import { apiClient } from '@/lib/api';
-
-interface TerminalModalProps {
-  open: boolean;
-  onClose: () => void;
-  containerName: string;
-  containerId: string;
-}
+import React from 'react';
+import { Dialog, DialogContent, DialogActions, Button } from '@mui/material';
+import { useSimpleTerminal } from '@/lib/hooks/useSimpleTerminal';
+import { useInteractiveTerminal } from '@/lib/hooks/useInteractiveTerminal';
+import { useTerminalModalState } from '@/lib/hooks/useTerminalModalState';
+import { TerminalModalProps } from '@/lib/interfaces/terminal';
+import TerminalHeader from './TerminalModal/TerminalHeader';
+import SimpleTerminal from './TerminalModal/SimpleTerminal';
+import InteractiveTerminal from './TerminalModal/InteractiveTerminal';
+import FallbackNotification from './TerminalModal/FallbackNotification';
 
 export default function TerminalModal({
   open,
@@ -30,38 +17,29 @@ export default function TerminalModal({
   containerName,
   containerId,
 }: TerminalModalProps) {
-  const [command, setCommand] = useState('');
-  const [output, setOutput] = useState<string[]>([]);
-  const [isExecuting, setIsExecuting] = useState(false);
+  const modalState = useTerminalModalState();
+  const simpleTerminal = useSimpleTerminal(containerId);
 
-  const handleExecute = async () => {
-    if (!command.trim()) return;
+  const interactiveTerminal = useInteractiveTerminal({
+    open: open && modalState.mode === 'interactive',
+    containerId,
+    containerName,
+    isMobile: modalState.isMobile,
+    onFallback: modalState.handleFallback,
+  });
 
-    setIsExecuting(true);
-    setOutput((prev) => [...prev, `$ ${command}`]);
-
-    try {
-      const result = await apiClient.executeCommand(containerId, command);
-      setOutput((prev) => [...prev, result.output || '(no output)']);
-    } catch (error) {
-      setOutput((prev) => [...prev, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`]);
-    } finally {
-      setIsExecuting(false);
-      setCommand('');
-    }
+  const handleClose = () => {
+    interactiveTerminal.cleanup();
+    simpleTerminal.reset();
+    modalState.reset();
+    onClose();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleExecute();
+      simpleTerminal.executeCommand();
     }
-  };
-
-  const handleClose = () => {
-    setOutput([]);
-    setCommand('');
-    onClose();
   };
 
   return (
@@ -70,92 +48,39 @@ export default function TerminalModal({
       onClose={handleClose}
       maxWidth="md"
       fullWidth
+      fullScreen={modalState.isMobile}
       PaperProps={{
         sx: {
-          minHeight: '500px',
-          maxHeight: '80vh',
+          minHeight: modalState.isMobile ? '100vh' : '500px',
+          maxHeight: modalState.isMobile ? '100vh' : '80vh',
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          pb: 2,
-        }}
-      >
-        <Typography variant="h2" component="div">
-          Terminal - {containerName}
-        </Typography>
-        <IconButton onClick={handleClose} size="small">
-          <Close />
-        </IconButton>
-      </DialogTitle>
+      <TerminalHeader
+        containerName={containerName}
+        mode={modalState.mode}
+        interactiveFailed={modalState.interactiveFailed}
+        onModeChange={modalState.handleModeChange}
+        onClose={handleClose}
+      />
 
       <DialogContent dividers>
-        <Paper
-          elevation={0}
-          sx={{
-            backgroundColor: '#0d1117',
-            color: '#c9d1d9',
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: '0.875rem',
-            padding: 2,
-            minHeight: '300px',
-            maxHeight: '400px',
-            overflowY: 'auto',
-            mb: 2,
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#161b22',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#30363d',
-              borderRadius: '4px',
-            },
-          }}
-        >
-          {output.length === 0 ? (
-            <Typography color="text.secondary" sx={{ fontFamily: 'inherit' }}>
-              Connected to {containerName}. Enter a command to start...
-            </Typography>
-          ) : (
-            <Box component="pre" sx={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {output.join('\n')}
-            </Box>
-          )}
-        </Paper>
-
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <TextField
-            fullWidth
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
+        {modalState.mode === 'interactive' ? (
+          <InteractiveTerminal terminalRef={interactiveTerminal.terminalRef} />
+        ) : (
+          <SimpleTerminal
+            output={simpleTerminal.output}
+            command={simpleTerminal.command}
+            workdir={simpleTerminal.workdir}
+            isExecuting={simpleTerminal.isExecuting}
+            isMobile={modalState.isMobile}
+            containerName={containerName}
+            outputRef={simpleTerminal.outputRef}
+            onCommandChange={simpleTerminal.setCommand}
+            onExecute={simpleTerminal.executeCommand}
             onKeyPress={handleKeyPress}
-            placeholder="Enter command (e.g., ls, pwd, echo 'hello')"
-            disabled={isExecuting}
-            variant="outlined"
-            size="small"
-            sx={{
-              fontFamily: '"JetBrains Mono", monospace',
-              '& input': {
-                fontFamily: '"JetBrains Mono", monospace',
-              },
-            }}
           />
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleExecute}
-            disabled={isExecuting || !command.trim()}
-            startIcon={<Send />}
-          >
-            Execute
-          </Button>
-        </Box>
+        )}
       </DialogContent>
 
       <DialogActions>
@@ -163,6 +88,13 @@ export default function TerminalModal({
           Close
         </Button>
       </DialogActions>
+
+      <FallbackNotification
+        show={modalState.showFallbackNotification}
+        reason={modalState.fallbackReason}
+        onClose={() => modalState.reset()}
+        onRetry={modalState.handleRetryInteractive}
+      />
     </Dialog>
   );
 }

@@ -1,30 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
+  TextField,
   Button,
   Typography,
   Box,
   Alert,
-  LockOpen,
-} from '@metabuilder/components/m3';
-import { beginLogin } from '@metabuilder/dbal-sso/core';
-import { dbalSsoConfig } from '@/lib/dbalSsoConfig';
+} from '@mui/material';
+import { LockOpen } from '@mui/icons-material';
+import { useLoginForm } from '@/lib/hooks/useLoginForm';
 
 export default function LoginForm() {
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSignIn = () => {
-    setError('');
-    setLoading(true);
-    beginLogin(dbalSsoConfig).catch(e => {
-      setError(e instanceof Error ? e.message : 'Sign-in failed to start');
-      setLoading(false);
-    });
-  };
+  const {
+    username,
+    setUsername,
+    password,
+    setPassword,
+    isShaking,
+    error,
+    loading,
+    handleSubmit,
+  } = useLoginForm();
 
   return (
     <Box
@@ -37,38 +36,98 @@ export default function LoginForm() {
         padding: 2,
       }}
     >
-      <Card sx={{ width: '100%', maxWidth: 400 }}>
+      <Card
+        sx={{
+          width: '100%',
+          maxWidth: 400,
+          animation: isShaking ? 'shake 0.5s' : 'none',
+          '@keyframes shake': {
+            '0%, 100%': { transform: 'translateX(0)' },
+            '25%': { transform: 'translateX(-10px)' },
+            '75%': { transform: 'translateX(10px)' },
+          },
+        }}
+      >
         <CardContent sx={{ p: 4 }}>
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Box
               sx={{
-                width: 64, height: 64, margin: '0 auto 16px',
+                width: 64,
+                height: 64,
+                margin: '0 auto 16px',
                 background: 'rgba(56, 178, 172, 0.1)',
-                borderRadius: '8px', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              <LockOpen style={{ fontSize: 32, color: 'var(--primary)' }} />
+              <LockOpen sx={{ fontSize: 32, color: 'secondary.main' }} />
             </Box>
             <Typography variant="h1" component="h1" gutterBottom>
-              Container Shell
+              Sign In
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Sign in with your MetaBuilder account to access container management
+              Enter your credentials to access the dashboard
             </Typography>
           </Box>
+
           {error && (
-            <Alert severity="error" style={{ marginBottom: 16 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
-          <Button
-            type="button" fullWidth variant="contained"
-            color="secondary" size="large" disabled={loading}
-            onClick={handleSignIn}
-          >
-            {loading ? 'Redirecting…' : 'Sign In'}
-          </Button>
+
+          <form onSubmit={handleSubmit}>
+            <TextField
+              fullWidth
+              label="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              margin="normal"
+              required
+              autoComplete="username"
+              sx={{ mb: 2 }}
+            />
+
+            <TextField
+              fullWidth
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              margin="normal"
+              required
+              autoComplete="current-password"
+              sx={{ mb: 3 }}
+            />
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="secondary"
+              size="large"
+              sx={{ mb: 2 }}
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                display: 'block',
+                textAlign: 'center',
+                pt: 2,
+                borderTop: 1,
+                borderColor: 'divider',
+              }}
+            >
+              Default: admin / admin123
+            </Typography>
+          </form>
         </CardContent>
       </Card>
     </Box>

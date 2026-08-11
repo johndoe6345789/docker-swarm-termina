@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
-import { AuthProvider } from "@/lib/auth";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Container Shell - Docker Swarm Terminal",
@@ -15,19 +16,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>
+        <Script src="/env.js" strategy="beforeInteractive" />
         <ThemeProvider>
-          <AuthProvider>
+          <Providers>
             {children}
-          </AuthProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
