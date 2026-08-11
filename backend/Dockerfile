@@ -1,40 +1,51 @@
-# Build and test stage
-FROM python:3.11-slim AS test
+# syntax=docker/dockerfile:1.7
+ARG DEPS_IMAGE=debian:sid
+ARG RUNTIME_IMAGE=debian:sid-slim
 
-WORKDIR /app
+FROM ${DEPS_IMAGE} AS builder
 
-# Install dependencies (both production and dev)
-COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates cmake ninja-build clang-tidy \
+    gcc-13 g++-13 git make \
+    pkg-config libssl-dev libcurl4-openssl-dev \
+    python3 python3-pip && \
+    update-alternatives --install \
+        /usr/bin/gcc gcc /usr/bin/gcc-13 100 && \
+    update-alternatives --install \
+        /usr/bin/g++ g++ /usr/bin/g++-13 100 && \
+    update-alternatives --install \
+        /usr/bin/cc cc /usr/bin/gcc-13 100 && \
+    pip3 install --break-system-packages \
+        "conan>=2.0,<3.0" && \
+    conan profile detect --force && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy application
-COPY . .
+WORKDIR /build
+COPY backend/conanfile.txt .
 
-# Run tests with coverage and generate test-passed marker
-RUN pytest --cov=. --cov-report=term-missing --cov-report=xml --cov-branch --cov-fail-under=70 -v \
-    && touch /app/.tests-passed
+ENV CONAN_SKIP_TEST=1
+RUN conan install . --build=missing \
+    -s build_type=Release \
+    -s compiler.cppstd=20 \
+    -of /build/conan
 
-# Production stage
-FROM python:3.11-slim AS production
+COPY backend/CMakeLists.txt .
+COPY backend/src/ src/
+RUN cmake -B out -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_TOOLCHAIN_FILE=/build/conan/conan_toolchain.cmake \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DCMAKE_CXX_CLANG_TIDY=clang-tidy \
+    && cmake --build out -j$(nproc)
 
-WORKDIR /app
+FROM ${RUNTIME_IMAGE}
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates libssl3 libcurl4 wget && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy test verification marker from test stage (ensures tests passed)
-COPY --from=test /app/.tests-passed /tmp/.tests-passed
+COPY --from=builder /build/out/dockerterminal-server /usr/bin/
 
-# Install production dependencies only
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application
-COPY . .
-
-# Expose port
 EXPOSE 5000
-
-# Run as root to access Docker socket (required for Docker API access)
-# In production, you may want to use a specific user with docker group permissions
-USER root
-
-# Run the application
-CMD ["python", "app.py"]
+ENTRYPOINT ["/usr/bin/dockerterminal-server"]

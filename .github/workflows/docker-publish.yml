@@ -9,12 +9,6 @@ on:
   pull_request:
     branches:
       - main
-  workflow_run:
-    workflows: ["Run Tests"]
-    types:
-      - completed
-    branches:
-      - main
 
 env:
   REGISTRY: ghcr.io
@@ -29,12 +23,6 @@ jobs:
       packages: write
 
     steps:
-      - name: Check test workflow status
-        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success'
-        run: |
-          echo "❌ Test workflow failed. Cancelling build and push."
-          exit 1
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -58,16 +46,7 @@ jobs:
             type=semver,pattern={{major}}
             type=sha
 
-      - name: Log backend build information
-        run: |
-          echo "=== Building Backend Docker Image ==="
-          echo "Context: ./backend"
-          echo "Tags to apply:"
-          echo "${{ steps.meta-backend.outputs.tags }}" | tr ',' '\n'
-          echo ""
-
       - name: Build and push backend image
-        id: build-backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -75,7 +54,6 @@ jobs:
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
-          outputs: type=registry,push=true
 
       - name: Extract metadata for frontend
         id: meta-frontend
@@ -90,17 +68,7 @@ jobs:
             type=semver,pattern={{major}}
             type=sha
 
-      - name: Log frontend build information
-        run: |
-          echo "=== Building Frontend Docker Image ==="
-          echo "Context: ./frontend"
-          echo "Tags to apply:"
-          echo "${{ steps.meta-frontend.outputs.tags }}" | tr ',' '\n'
-          echo "Build args: NEXT_PUBLIC_API_URL=http://backend:5000"
-          echo ""
-
       - name: Build and push frontend image
-        id: build-frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -108,42 +76,5 @@ jobs:
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
-          outputs: type=registry,push=true
           build-args: |
             NEXT_PUBLIC_API_URL=http://backend:5000
-
-      - name: Build summary
-        run: |
-          echo "=================================="
-          echo "  Docker Build & Push Complete"
-          echo "=================================="
-          echo ""
-          echo "✅ Backend Image:"
-          echo "   Digest: ${{ steps.build-backend.outputs.digest }}"
-          echo "   Tags:"
-          echo "${{ steps.meta-backend.outputs.tags }}" | tr ',' '\n' | sed 's/^/     - /'
-          echo ""
-          echo "✅ Frontend Image:"
-          echo "   Digest: ${{ steps.build-frontend.outputs.digest }}"
-          echo "   Tags:"
-          echo "${{ steps.meta-frontend.outputs.tags }}" | tr ',' '\n' | sed 's/^/     - /'
-          echo ""
-          echo "📦 Images pushed to: ${{ env.REGISTRY }}"
-          echo "=================================="
-
-      - name: Add job summary
-        run: |
-          echo "## 🐳 Docker Build & Push Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Backend Image" >> $GITHUB_STEP_SUMMARY
-          echo "- **Digest:** \`${{ steps.build-backend.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tags:**" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta-backend.outputs.tags }}" | tr ',' '\n' | sed 's/^/  - `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Frontend Image" >> $GITHUB_STEP_SUMMARY
-          echo "- **Digest:** \`${{ steps.build-frontend.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tags:**" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta-frontend.outputs.tags }}" | tr ',' '\n' | sed 's/^/  - `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Registry" >> $GITHUB_STEP_SUMMARY
-          echo "📦 Images pushed to: \`${{ env.REGISTRY }}\`" >> $GITHUB_STEP_SUMMARY
