@@ -1,1 +1,0 @@
-"""Terminal WebSocket handlers."""
